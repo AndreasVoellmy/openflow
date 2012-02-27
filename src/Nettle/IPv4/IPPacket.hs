@@ -138,13 +138,16 @@ getIPHeader = do
   hdrChecksum        <- getWord16be
   nwsrc              <- getIPAddress
   nwdst              <- getIPAddress
+  let hdrLen = fromIntegral (b1 .&. 0x0f)
+  when (hdrLen > 5) (skip (hdrLen - 5))
   return (IPHeader { ipSrcAddress = nwsrc 
                    , ipDstAddress = nwdst 
-                   , ipProtocol = nwproto
-                   , headerLength = fromIntegral (b1 .&. 0x0f)
+                   , ipProtocol   = nwproto
+                   , headerLength = hdrLen
                    , totalLength  = fromIntegral totalLen
-                   , dscp = shiftR diffServ 2
-                   } )
+                   , dscp         = shiftR diffServ 2
+                   } 
+         )
 {-# INLINE getIPHeader #-}
 
 getIPHeader2 :: Binary.Get IPHeader
