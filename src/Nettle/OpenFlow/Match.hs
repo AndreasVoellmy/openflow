@@ -98,9 +98,9 @@ frameToExactMatch inPort (HCons h (HCons body HNil)) =
               let (tsrc,tdst) = 
                     case ipbody of 
                       (IP.TCPInIP thdr)                 -> thdr
-                      (IP.UDPInIP thdr _)               -> thdr
+                      (IP.UDPInIP thdr)               -> thdr
                       (IP.ICMPInIP (icmpType,icmpCode)) -> (fromIntegral icmpType, 0)
-                      (IP.UninterpretedIPBody _)        -> (0,0)
+                      (IP.UninterpretedIPBody)        -> (0,0)
               in (dscp, ipProtocol, exactPrefix ipSrcAddress, exactPrefix ipDstAddress, tsrc, tdst)
               
             (ARPInEthernet arpPacket) -> 
@@ -145,9 +145,9 @@ frameToExactMatchNoPort (HCons h (HCons body HNil)) =
               let (tsrc,tdst) = 
                     case ipbody of 
                       (IP.TCPInIP thdr)                 -> thdr
-                      (IP.UDPInIP thdr _)               -> thdr
+                      (IP.UDPInIP thdr)               -> thdr
                       (IP.ICMPInIP (icmpType,icmpCode)) -> (fromIntegral icmpType, 0)
-                      (IP.UninterpretedIPBody _)        -> (0,0)
+                      (IP.UninterpretedIPBody)        -> (0,0)
               in (dscp, ipProtocol, exactPrefix ipSrcAddress, exactPrefix ipDstAddress, tsrc, tdst)
               
             (ARPInEthernet arpPacket) -> 
@@ -223,7 +223,7 @@ matches (inPort, frame) (m@Match { inPort=inPort', ipTypeOfService=ipTypeOfServi
                   Just pkt -> 
                     case hOccurs pkt of
                       IP.TCPInIP (srcPort, _) -> srcPort == sp
-                      IP.UDPInIP (srcPort, _) body -> srcPort == sp
+                      IP.UDPInIP (srcPort, _)  -> srcPort == sp
                       _ -> True
                   Nothing -> True
           matchesDstTransportPort dp = 
@@ -231,6 +231,6 @@ matches (inPort, frame) (m@Match { inPort=inPort', ipTypeOfService=ipTypeOfServi
                   Just ipPacket ->
                     case hOccurs ipPacket of 
                       IP.TCPInIP (_, dstPort) -> dstPort == dp
-                      IP.UDPInIP (_, dstPort) body -> dstPort == dp
+                      IP.UDPInIP (_, dstPort) -> dstPort == dp
                       _                       -> True
                   Nothing -> True

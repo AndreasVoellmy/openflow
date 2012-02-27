@@ -63,7 +63,7 @@ receiveControlMessage (ClientHandle (h,_,_))
 {-# INLINE receiveControlMessage #-}
         
 -- | Sends a message to the controller.        
-sendMessage :: ClientHandle -> (TransactionID, SCMessage) -> IO ()
+sendMessage :: ClientHandle -> (TransactionID, SCMessage EthernetFrame) -> IO ()
 sendMessage (ClientHandle (_,h,fptr)) msg =
   withForeignPtr fptr $ \ptr -> 
   do bytes <- Strict.runPut ptr (putSCMessage msg)

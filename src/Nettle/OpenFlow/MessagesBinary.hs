@@ -16,6 +16,7 @@ module Nettle.OpenFlow.MessagesBinary (
   , putCSMessage
     
   , OFPHeader(..)
+  , FrameParser(..)
   ) where
 
 import Nettle.Ethernet.EthernetAddress
@@ -38,7 +39,7 @@ import Data.Monoid
 import Data.Word
 import Data.Bits
 import Nettle.OpenFlow.StrictPut
-import Nettle.OpenFlow.Get
+import Nettle.OpenFlow.GetInternal
 import qualified Data.ByteString as B
 import Data.Maybe (fromJust, isJust)
 import Data.List (foldl')
@@ -123,11 +124,13 @@ ofptQueueGetConfigRequest = 20
 ofptQueueGetConfigReply :: MessageTypeCode
 ofptQueueGetConfigReply   = 21
 
+type FrameParser a = Get a
 
 -- | Parser for @SCMessage@s
-getSCMessage :: Get (M.TransactionID, M.SCMessage) 
-getSCMessage = do hdr <- getHeader
-                  getSCMessageBody hdr
+getSCMessage :: FrameParser a -> Get (M.TransactionID, M.SCMessage a) 
+getSCMessage parser 
+  = do hdr <- getHeader
+       getSCMessageBody parser hdr
 
 
 -- | Parser for @CSMessage@s
@@ -137,7 +140,7 @@ getCSMessage = do hdr <- getHeader
 
 
 -- | Unparser for @SCMessage@s
-putSCMessage :: (M.TransactionID, M.SCMessage) -> Put 
+putSCMessage :: (M.TransactionID, M.SCMessage a) -> Put 
 putSCMessage (xid, msg) = 
   case msg of 
     M.SCHello -> putH ofptHello headerSize
@@ -156,10 +159,10 @@ putSCMessage (xid, msg) =
   where vid      = ofpVersion
         putH tcode len = putHeader (OFPHeader vid tcode (fromIntegral len) xid) 
 
-packetInMessageBodyLen :: PacketInfo -> Int
+packetInMessageBodyLen :: PacketInfo a -> Int
 packetInMessageBodyLen pktInfo = 10 + fromIntegral (packetLength pktInfo)
 
-putPacketInRecord :: PacketInfo -> Put
+putPacketInRecord :: PacketInfo a -> Put
 putPacketInRecord pktInfo@(PacketInfo {..}) = 
   do putWord32be $ maybe (-1) id bufferID
      putWord16be $ fromIntegral packetLength 
@@ -213,10 +216,10 @@ getHeader = do v <- getWord8
                
 -- Get SCMessage body
 {-# INLINE getSCMessageBody #-} 
-getSCMessageBody :: OFPHeader -> Get (M.TransactionID, M.SCMessage)
-getSCMessageBody hdr@(OFPHeader !v !msgType !msgLength !msgTransactionID) = 
+getSCMessageBody :: FrameParser a -> OFPHeader -> Get (M.TransactionID, M.SCMessage a)
+getSCMessageBody parser hdr@(OFPHeader !v !msgType !msgLength !msgTransactionID) = 
     if msgType == ofptPacketIn 
-    then do packetInRecord <- getPacketInRecord len
+    then do packetInRecord <- getPacketInRecord parser len
             return (msgTransactionID, M.PacketIn packetInRecord)
     else if msgType == ofptEchoRequest
          then do bytes <- getWord8s (len - headerSize)
@@ -332,7 +335,7 @@ getSetConfig = do flags <- getWord16be
 getVendorMessage :: Get ()                  
 getVendorMessage 
   = do r <- remaining 
-       getByteString r
+       skip r
        return ()
                
 -------------------------------------------
@@ -549,20 +552,20 @@ actionType2BitMask = shiftL 1 . fromIntegral . actionType2Code
 -- Packet In Parser
 ------------------------------------------
 {-# INLINE getPacketInRecord #-} 
-getPacketInRecord :: Int -> Get PacketInfo
-getPacketInRecord len = do 
+getPacketInRecord :: FrameParser a -> Int -> Get (PacketInfo a)
+getPacketInRecord parser len = do 
   bufID      <- getWord32be
   totalLen   <- getWord16be
   in_port    <- getWord16be
   reasonCode <- getWord8
   skip 1
-  -- bytes <- getByteString (fromIntegral data_len)
+  frameBytes <- getByteString (fromIntegral data_len)
   let reason = code2Reason reasonCode
   let mbufID = if (bufID == maxBound) then Nothing else Just bufID
-  -- let frame = {-# SCC "getPacketInRecord1" #-} runGetResult getEthernetFrame bytes
-  frame <- getEthernetFrame
-  n_parsed <- bytesRead
-  when (n_parsed < len - headerSize) (skip (len - n_parsed - headerSize))
+  let frame = runGetResult parser frameBytes
+  -- frame <- parser data_len -- getEthernetFrame
+  -- n_parsed <- bytesRead
+  -- when (n_parsed < len - headerSize) (skip (len - n_parsed - headerSize))
   return $ PacketInfo mbufID (fromIntegral totalLen) in_port reason B.empty {-bytes-} frame
   where data_offset = 18 -- 8 + 4 + 2 + 2 + 1 + 1
         data_len    = len - data_offset

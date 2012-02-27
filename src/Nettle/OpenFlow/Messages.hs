@@ -26,18 +26,18 @@ type TransactionID = Word32
 
 -- | The Switch can send the following messages to 
 -- the controller.
-data SCMessage = SCHello               -- ^ Sent after a switch establishes a TCP connection to the controller
-               | SCEchoRequest ![Word8] -- ^ Switch requests an echo reply
-               | SCEchoReply   ![Word8] -- ^ Switch responds to an echo request
-               | Features      !SwitchFeatures -- ^ Switch reports its features
-               | PacketIn      !Packet.PacketInfo -- ^ Switch sends a packet to the controller
-               | PortStatus    !Port.PortStatus   -- ^ Switch sends port status
-               | FlowRemoved   !FlowTable.FlowRemoved -- ^ Switch reports that a flow has been removed
-               | StatsReply    !StatsReply -- ^ Switch reports statistics
-               | Error         !SwitchError -- ^ Switch reports an error
-               | BarrierReply  -- ^ Switch responds that a barrier has been processed
-               | QueueConfigReply !QueueConfigReply
-      deriving (Show,Eq)
+data SCMessage a = SCHello               -- ^ Sent after a switch establishes a TCP connection to the controller
+                 | SCEchoRequest ![Word8] -- ^ Switch requests an echo reply
+                 | SCEchoReply   ![Word8] -- ^ Switch responds to an echo request
+                 | Features      !SwitchFeatures -- ^ Switch reports its features
+                 | PacketIn      !(Packet.PacketInfo a) -- ^ Switch sends a packet to the controller
+                 | PortStatus    !Port.PortStatus   -- ^ Switch sends port status
+                 | FlowRemoved   !FlowTable.FlowRemoved -- ^ Switch reports that a flow has been removed
+                 | StatsReply    !StatsReply -- ^ Switch reports statistics
+                 | Error         !SwitchError -- ^ Switch reports an error
+                 | BarrierReply  -- ^ Switch responds that a barrier has been processed
+                 | QueueConfigReply !QueueConfigReply
+                 deriving (Show,Eq)
 
 -- |The controller can send these messages to the switch.
 data CSMessage 

@@ -22,6 +22,7 @@ import Control.Exception
 import Control.Monad
 import qualified Data.Map as Map
 import Nettle.Servers.Server
+import Nettle.Ethernet.EthernetFrame (EthernetFrame)
 
 -- | The type of externally visible events that may occur for the multiplexed TCP server.
 data TCPMessage a = ConnectionEstablished SockAddr            -- ^ A connection to a peer with the given address is established.
@@ -37,7 +38,7 @@ instance Functor TCPMessage where
 -- | Runs a server that returns two commands, one to receive the next message from any connected client, 
 -- and one that sends a message to a client. 
 muxedTCPServer :: ServerPortNumber
-                  -> IO (IO (TCPMessage (TransactionID,SCMessage)), 
+                  -> IO (IO (TCPMessage (TransactionID,SCMessage EthernetFrame)), 
                          SockAddr -> (TransactionID,CSMessage) -> IO ())
 muxedTCPServer pstring = do
   server             <- startOpenFlowServer Nothing pstring

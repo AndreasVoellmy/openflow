@@ -57,7 +57,7 @@ unbufferedPacketOut pktData inPort actions  =
 
 -- | Constructs a @PacketOut@ value that processes the packet referred to by the @PacketInfo@ value 
 -- according to the specified actions. 
-receivedPacketOut :: PacketInfo -> ActionSequence -> PacketOut
+receivedPacketOut :: PacketInfo a -> ActionSequence -> PacketOut
 receivedPacketOut (PacketInfo {..}) actions = 
     case bufferID of 
       Nothing    -> unbufferedPacketOut packetData (Just receivedOnPort) actions
@@ -69,14 +69,14 @@ receivedPacketOut (PacketInfo {..}) actions =
 -- flow rule matches, the packet is sent to the controller. When 
 -- packet is sent to the controller, the switch sends a message
 -- containing the following information.
-data PacketInfo 
+data PacketInfo a
     = PacketInfo {
         bufferID       :: !(Maybe BufferID), -- ^buffer ID if packet buffered
         packetLength   :: !NumBytes,       -- ^full length of frame
         receivedOnPort :: !PortID,         -- ^port on which frame was received
         reasonSent     :: !PacketInReason, -- ^reason packet is being sent
         packetData     :: !B.ByteString,   -- ^ethernet frame, includes full packet only if no buffer ID
-        enclosedFrame  :: !EthernetFrame -- ^result of parsing packetData field.
+        enclosedFrame  :: a -- ^result of parsing packetData field.
       } deriving (Show,Eq)
 
 
@@ -89,5 +89,5 @@ data PacketInReason = NotMatched | ExplicitSend deriving (Show,Read,Eq,Ord,Enum)
 -- | The number of bytes in a packet.
 type NumBytes = Int
 
-bufferedAtSwitch :: PacketInfo -> Bool
+bufferedAtSwitch :: PacketInfo a -> Bool
 bufferedAtSwitch = isJust . bufferID

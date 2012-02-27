@@ -97,20 +97,20 @@ ipTypeIcmp = 1
 -- | The body of an IP packet can be either a TCP, UDP, ICMP or other packet. 
 -- Packets other than TCP, UDP, ICMP are represented as unparsed @ByteString@ values.
 data IPBody   = TCPInIP !TCPHeader
-              | UDPInIP !UDPHeader S.ByteString
+              | UDPInIP !UDPHeader 
               | ICMPInIP !ICMPHeader
-              | UninterpretedIPBody B.ByteString 
+              | UninterpretedIPBody
               deriving (Show,Eq)
 
 
 foldIPPacket :: (IPHeader -> IPBody -> a) -> IPPacket -> a
 foldIPPacket f (HCons h (HCons b HNil)) = f h b
 
-foldIPBody :: (TCPHeader -> a) -> (UDPHeader -> a) -> (ICMPHeader -> a) -> (B.ByteString -> a) -> IPBody -> a
+foldIPBody :: (TCPHeader -> a) -> (UDPHeader -> a) -> (ICMPHeader -> a) -> a -> IPBody -> a
 foldIPBody f g h k (TCPInIP x) = f x
-foldIPBody f g h k (UDPInIP x body) = g x
+foldIPBody f g h k (UDPInIP x) = g x
 foldIPBody f g h k (ICMPInIP x) = h x
-foldIPBody f g h k (UninterpretedIPBody x) = k x
+foldIPBody f g h k UninterpretedIPBody = k 
 
 
 fromTCPPacket :: IPBody -> Maybe (TCPHeader :*: HNil)
@@ -118,8 +118,8 @@ fromTCPPacket (TCPInIP body) = Just (hCons body hNil)
 fromTCPPacket _ = Nothing
 
 
-fromUDPPacket :: IPBody -> Maybe (UDPHeader :*: S.ByteString :*: HNil)
-fromUDPPacket (UDPInIP hdr body) = Just (hCons hdr (hCons body hNil))
+fromUDPPacket :: IPBody -> Maybe (UDPHeader :*: HNil)
+fromUDPPacket (UDPInIP hdr) = Just (hCons hdr hNil)
 fromUDPPacket _ = Nothing
 
 
@@ -178,19 +178,19 @@ getIPProtocol2 = Binary.getWord8
 
 getIPPacket :: Get IPPacket 
 getIPPacket = do 
-  hdr  <- {-# SCC "getIPPacket1" #-} getIPHeader
-  body <- {-# SCC "getIPPacket2" #-} getIPBody hdr
+  hdr  <- getIPHeader
+  body <- getIPBody hdr
   return body
     where getIPBody hdr@(IPHeader {..}) 
-              | ipProtocol == ipTypeTcp  = {-# SCC "getIPPacket3" #-} getTCPHeader  >>= return . (\tcpHdr -> hCons hdr (hCons (TCPInIP tcpHdr) hNil))
-              | ipProtocol == ipTypeUdp  = {-# SCC "getIPPacket4" #-} 
-                                           do udpHdr <- getUDPHeader  
-                                              body <- getByteString (fromIntegral (totalLength - (4 * headerLength)) - 4)
-                                              return (hCons hdr (hCons (UDPInIP udpHdr body) hNil))
-              | ipProtocol == ipTypeIcmp = {-# SCC "getIPPacket5" #-} getICMPHeader >>= return . (\icmpHdr -> hCons hdr (hCons (ICMPInIP icmpHdr) hNil))
-              | otherwise                = {-# SCC "getIPPacket6" #-} 
-                                             getByteString (fromIntegral (totalLength - (4 * headerLength))) >>= 
-                                             return . (\bs -> hCons hdr (hCons (UninterpretedIPBody (B.fromChunks [bs])) hNil))
+              | ipProtocol == ipTypeTcp  = do tcpHdr <- getTCPHeader
+                                              return (hCons hdr (hCons (TCPInIP tcpHdr) hNil))
+              | ipProtocol == ipTypeUdp  = do udpHdr <- getUDPHeader  
+                                              -- body <- getByteString (fromIntegral (totalLength - (4 * headerLength)) - 4)
+                                              return (hCons hdr (hCons (UDPInIP udpHdr) hNil))
+              | ipProtocol == ipTypeIcmp = do icmpHdr <- getICMPHeader 
+                                              return (hCons hdr (hCons (ICMPInIP icmpHdr) hNil))
+              | otherwise                = do bs <- return S.empty {- getByteString (fromIntegral (totalLength - (4 * headerLength))) -} 
+                                              return (hCons hdr (hCons UninterpretedIPBody hNil))
 {-# INLINE getIPPacket #-}
           
 getIPPacket2 :: Binary.Get IPPacket 
@@ -202,10 +202,10 @@ getIPPacket2 = do
               | ipProtocol == ipTypeTcp  = getTCPHeader2  >>= return . (\tcpHdr -> hCons hdr (hCons (TCPInIP tcpHdr) hNil))
               | ipProtocol == ipTypeUdp  = do udpHdr <- getUDPHeader2  
                                               body <- Binary.getByteString (fromIntegral (totalLength - (4 * headerLength)))
-                                              return (hCons hdr (hCons (UDPInIP udpHdr body) hNil))
+                                              return (hCons hdr (hCons (UDPInIP udpHdr) hNil))
               | ipProtocol == ipTypeIcmp = getICMPHeader2 >>= return . (\icmpHdr -> hCons hdr (hCons (ICMPInIP icmpHdr) hNil))
               | otherwise                = Binary.getByteString (fromIntegral (totalLength - (4 * headerLength))) >>= 
-                                           return . (\bs -> hCons hdr (hCons (UninterpretedIPBody (B.fromChunks [bs])) hNil))
+                                           return . (\bs -> hCons hdr (hCons UninterpretedIPBody hNil))
 
 -- Transport Header
 

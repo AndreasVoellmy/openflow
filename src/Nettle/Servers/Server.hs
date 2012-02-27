@@ -16,6 +16,7 @@ module Nettle.Servers.Server
       , ServerPortNumber 
       , HostName
       , startOpenFlowServer
+      , startOpenFlowServerWithParser        
       , acceptSwitch 
       , handshake
       , closeServer
@@ -77,7 +78,10 @@ type ServerPortNumber = Word16
 deriving instance Ord SockAddr
 
 -- | Abstract type containing the state of the OpenFlow server.
-newtype OpenFlowServer = OpenFlowServer (Socket, IORef (Map SwitchID SwitchHandle))
+newtype OpenFlowServer a = OpenFlowServer (Socket, IORef (Map SwitchID (SwitchHandle a)), FrameParser a)
+
+defaultParser :: FrameParser EthernetFrame
+defaultParser = getEthernetFrame
 
 headerSize :: Int
 headerSize = 8        
@@ -89,12 +93,17 @@ outBufferSize :: Int
 outBufferSize = 8 * 1024 
 
 
+
 -- | Starts an OpenFlow server. 
 -- The server socket will be bound to a wildcard IP address if the first argument is 'Nothing' and will be bound to a particular 
 -- address if the first argument is 'Just' something. The 'HostName' value can either be an IP address in dotted quad notation, 
 -- like 10.1.30.127, or a host name, whose IP address will be looked up. The server port must be specified.
-startOpenFlowServer :: Maybe HostName -> ServerPortNumber -> IO OpenFlowServer
-startOpenFlowServer mHostName portNumber = 
+startOpenFlowServer :: Maybe HostName -> ServerPortNumber -> IO (OpenFlowServer EthernetFrame)
+startOpenFlowServer = startOpenFlowServerWithParser defaultParser
+
+-- | Like 'startOpenFlowServer', but with a specific frame parser.
+startOpenFlowServerWithParser :: FrameParser a -> Maybe HostName -> ServerPortNumber -> IO (OpenFlowServer a)
+startOpenFlowServerWithParser parser mHostName portNumber = 
   do addrinfos  <- getAddrInfo (Just (defaultHints {addrFlags = [AI_PASSIVE]})) mHostName (Just $ show portNumber)
      let serveraddr = head addrinfos
      sock <- socket (addrFamily serveraddr) Stream defaultProtocol
@@ -104,17 +113,18 @@ startOpenFlowServer mHostName portNumber =
      bindSocket sock (addrAddress serveraddr)
      listen sock queueLength
      switchHandleMapRef <- newIORef Map.empty
-     return (OpenFlowServer (sock, switchHandleMapRef))
+     return (OpenFlowServer (sock, switchHandleMapRef, parser))
     where 
       queueLength = 8192 --2048
 
+
 -- | Closes the OpenFlow server.
-closeServer :: OpenFlowServer -> IO ()
-closeServer (OpenFlowServer (s,_)) = 
+closeServer :: OpenFlowServer a -> IO ()
+closeServer (OpenFlowServer (s,_,_)) = 
   do sClose s
 
 -- | Abstract type managing the state of the switch connection.
-data SwitchHandle = SwitchHandle !(SockAddr, Socket, ForeignPtr Word8, Buffer, IORef S.ByteString, SwitchID, Lock, OpenFlowServer)
+data SwitchHandle a = SwitchHandle !(SockAddr, Socket, ForeignPtr Word8, Buffer, IORef S.ByteString, SwitchID, Lock, OpenFlowServer a)
 
 -- WARNING: Make sure that whenever we do receive, 
 -- the possible bytes unprocessed < buffer size - batch size
@@ -205,8 +215,8 @@ newBuffer size =
                
 -- | Blocks until a switch connects to the server and returns the 
 -- switch handle.
-acceptSwitch :: OpenFlowServer -> IO SwitchHandle
-acceptSwitch ofps@(OpenFlowServer (s,shmr)) = 
+acceptSwitch :: OpenFlowServer a -> IO (SwitchHandle a)
+acceptSwitch ofps@(OpenFlowServer (s,shmr,_)) = 
   do (connsock, clientaddr) <- accept s
      let bufferSize = (8 * 1024) - 128 -- 1024 * 1024
      outBufferPtr <- mallocForeignPtrBytes bufferSize :: IO (ForeignPtr Word8)
@@ -216,8 +226,8 @@ acceptSwitch ofps@(OpenFlowServer (s,shmr)) =
      let sh = SwitchHandle (clientaddr, connsock, outBufferPtr, inBuffer, inBufferRef, -1, casLock, ofps)
      return sh
     
-handshake :: SwitchHandle -> IO SwitchFeatures
-handshake switch@(SwitchHandle (_,_,_,_,_,_,_, OpenFlowServer (_,shmr)))
+handshake :: Show a => SwitchHandle a -> IO SwitchFeatures
+handshake switch@(SwitchHandle (_,_,_,_,_,_,_, OpenFlowServer (_,shmr,_)))
   = do sendToSwitch switch (0, CSHello)
        m <- receiveFromSwitch switch
        case m of 
@@ -246,10 +256,12 @@ handshake switch@(SwitchHandle (_,_,_,_,_,_,_, OpenFlowServer (_,shmr)))
      
 
 -- | Returns the socket address of the switch connection. 
-switchSockAddr :: SwitchHandle -> SockAddr
+switchSockAddr :: SwitchHandle a -> SockAddr
 switchSockAddr (SwitchHandle (a,_,_,_,_,_,_,_)) = a
 
-getBatchAndProcess :: SwitchHandle -> ((TransactionID, SCMessage) -> IO [(TransactionID, CSMessage)]) -> IO Bool
+getBatchAndProcess :: SwitchHandle a -> 
+                      ((TransactionID, SCMessage a) -> IO [(TransactionID, CSMessage)]) -> 
+                      IO Bool
 getBatchAndProcess sh@(SwitchHandle (_, s, _,_,inBufferRef,_,_,_)) f = 
   do newBatchBS <- recv s batchSize
      if S.length newBatchBS == 0
@@ -261,7 +273,9 @@ getBatchAndProcess sh@(SwitchHandle (_, s, _,_,inBufferRef,_,_,_)) f =
                return True
 
 
-processBatchStrictList :: SwitchHandle -> ((TransactionID, SCMessage) -> IO (StrictList (TransactionID, CSMessage))) -> IO Bool
+processBatchStrictList :: SwitchHandle a -> 
+                          ((TransactionID, SCMessage a) -> IO (StrictList (TransactionID, CSMessage))) -> 
+                          IO Bool
 processBatchStrictList sh@(SwitchHandle (_,s,_,buffer,inBufferRef,_,_,_)) f = 
   do nbytes <- recvIntoBuffer' s buffer
      if nbytes == 0
@@ -273,7 +287,9 @@ processBatchStrictList sh@(SwitchHandle (_,s,_,buffer,inBufferRef,_,_,_)) f =
 
 
 -- Just like getBatchAndProcess' except that it uses splitChunks4.
-getBatchAndProcess4 :: SwitchHandle -> ((TransactionID, SCMessage) -> IO (StrictList (TransactionID, CSMessage))) -> IO Bool
+getBatchAndProcess4 :: SwitchHandle a -> 
+                       ((TransactionID, SCMessage a) -> IO (StrictList (TransactionID, CSMessage))) -> 
+                       IO Bool
 getBatchAndProcess4 sh@(SwitchHandle (_,s,_,_,inBufferRef,_,_,_)) f = 
   do newBatchBS <- recv s batchSize
      if S.length newBatchBS == 0
@@ -285,7 +301,7 @@ getBatchAndProcess4 sh@(SwitchHandle (_,s,_,_,inBufferRef,_,_,_)) f =
                return True
 
 
-processBatchIO :: SwitchHandle -> ((TransactionID, SCMessage) -> IO ()) -> IO Bool
+processBatchIO :: SwitchHandle a -> ((TransactionID, SCMessage a) -> IO ()) -> IO Bool
 processBatchIO sh@(SwitchHandle (_, s, _,_,inBufferRef,_,_,_)) f = 
   do newBatchBS <- recv s batchSize
      if S.length newBatchBS == 0
@@ -297,11 +313,11 @@ processBatchIO sh@(SwitchHandle (_, s, _,_,inBufferRef,_,_,_)) f =
                return True
 
 
-splitChunks' :: SwitchHandle -> 
+splitChunks' :: SwitchHandle a -> 
                 S.ByteString -> 
-                ((TransactionID, SCMessage) -> IO [(TransactionID, CSMessage)]) -> 
+                ((TransactionID, SCMessage a) -> IO [(TransactionID, CSMessage)]) -> 
                 IO S.ByteString
-splitChunks' sh@(SwitchHandle(_,s,fptr,_,_,_,_,_)) buffer f = 
+splitChunks' sh@(SwitchHandle(_,s,fptr,_,_,_,_,OpenFlowServer (_,_,parser))) buffer f = 
   go buffer 0
   where 
     go buffer !pos =
@@ -314,7 +330,7 @@ splitChunks' sh@(SwitchHandle(_,s,fptr,_,_,_,_,_)) buffer f =
           (# header, buffer' #) ->
             let expectedBodyLen = fromIntegral (msgLength header) - headerSize
             in if expectedBodyLen <= S.length buffer'
-               then case {-# SCC "splitChunks2:runGet2" #-} runGet2 (getSCMessageBody header) buffer' of
+               then case {-# SCC "splitChunks2:runGet2" #-} runGet2 (getSCMessageBody parser header) buffer' of
                  (# msg, buffer'' #) -> 
                         case msg of 
                           (xid, SCEchoRequest bytes) -> do sendToSwitch sh (xid, CSEchoReply bytes) 
@@ -331,11 +347,11 @@ splitChunks' sh@(SwitchHandle(_,s,fptr,_,_,_,_,_)) buffer f =
 
     
 
-splitChunks'' :: SwitchHandle -> 
+splitChunks'' :: SwitchHandle a -> 
                 S.ByteString -> 
-                ((TransactionID, SCMessage) -> IO (StrictList (TransactionID, CSMessage))) -> 
+                ((TransactionID, SCMessage a) -> IO (StrictList (TransactionID, CSMessage))) -> 
                 IO Int
-splitChunks'' sh@(SwitchHandle(_,s,fptr,_,_,_,_,_)) buf f = 
+splitChunks'' sh@(SwitchHandle(_,s,fptr,_,_,_,_,OpenFlowServer (_,_,parser))) buf f = 
   go buf 0 0
   where 
     go buffer !pos !nread =
@@ -348,7 +364,7 @@ splitChunks'' sh@(SwitchHandle(_,s,fptr,_,_,_,_,_)) buf f =
             let msgLen = fromIntegral (msgLength header)
                 expectedBodyLen = msgLen - headerSize
             in if expectedBodyLen <= S.length buffer'
-               then case {-# SCC "splitChunks2:runGet2" #-} runGet2 (getSCMessageBody header) buffer' of
+               then case {-# SCC "splitChunks2:runGet2" #-} runGet2 (getSCMessageBody parser header) buffer' of
                  (# msg, buffer'' #) -> 
                         case msg of 
                           (xid, SCEchoRequest bytes) -> do sendToSwitch sh (xid, CSEchoReply bytes) 
@@ -369,11 +385,11 @@ splitChunks'' sh@(SwitchHandle(_,s,fptr,_,_,_,_,_)) buf f =
 -- every write. We try to keep the batched send as in splitChunks'', but
 -- to do that, we have to collect the byte strings, then reverse them to preserve their order,
 -- and then use vectored I/O to send all in a single call.
-splitChunks4 :: SwitchHandle -> 
+splitChunks4 :: SwitchHandle a -> 
                 S.ByteString -> 
-                ((TransactionID, SCMessage) -> IO (StrictList (TransactionID, CSMessage))) -> 
+                ((TransactionID, SCMessage a) -> IO (StrictList (TransactionID, CSMessage))) -> 
                 IO S.ByteString
-splitChunks4 sh@(SwitchHandle(_,s,fptr,_,_,_,_,_)) buffer f = 
+splitChunks4 sh@(SwitchHandle(_,s,fptr,_,_,_,_,OpenFlowServer (_,_,parser))) buffer f = 
   go buffer
   where 
     go buffer =
@@ -384,7 +400,7 @@ splitChunks4 sh@(SwitchHandle(_,s,fptr,_,_,_,_,_)) buffer f =
           (# header, buffer' #) ->
             let expectedBodyLen = fromIntegral (msgLength header) - headerSize
             in if expectedBodyLen <= S.length buffer'
-               then case {-# SCC "splitChunks2:runGet2" #-} runGet2 (getSCMessageBody header) buffer' of
+               then case {-# SCC "splitChunks2:runGet2" #-} runGet2 (getSCMessageBody parser header) buffer' of
                  (# msg, buffer'' #) -> 
                         case msg of 
                           (xid, SCEchoRequest bytes) -> do sendToSwitch sh (xid, CSEchoReply bytes) 
@@ -397,11 +413,11 @@ splitChunks4 sh@(SwitchHandle(_,s,fptr,_,_,_,_,_)) buffer f =
       where bsSize      = 1 * 1024 -- can probably make this much, much smaller!
 
 
-splitChunks3 :: SwitchHandle -> 
+splitChunks3 :: SwitchHandle a -> 
                 S.ByteString -> 
-                ((TransactionID, SCMessage) -> IO ()) ->
+                ((TransactionID, SCMessage a) -> IO ()) ->
                 IO S.ByteString
-splitChunks3 sh@(SwitchHandle(_,s,fptr,_,_,_,_,_)) buffer f = 
+splitChunks3 sh@(SwitchHandle(_,s,fptr,_,_,_,_,OpenFlowServer (_,_,parser))) buffer f = 
   go buffer
   where 
     go buffer =
@@ -412,7 +428,7 @@ splitChunks3 sh@(SwitchHandle(_,s,fptr,_,_,_,_,_)) buffer f =
           (# header, buffer' #) ->
             let expectedBodyLen = fromIntegral (msgLength header) - headerSize
             in if expectedBodyLen <= S.length buffer'
-               then case {-# SCC "splitChunks3:runGet2" #-} runGet2 (getSCMessageBody header) buffer' of
+               then case {-# SCC "splitChunks3:runGet2" #-} runGet2 (getSCMessageBody parser header) buffer' of
                  (# msg, buffer'' #) -> 
                         case msg of 
                           (xid, SCEchoRequest bytes) -> do sendToSwitch sh (xid, CSEchoReply bytes) 
@@ -422,7 +438,7 @@ splitChunks3 sh@(SwitchHandle(_,s,fptr,_,_,_,_,_)) buffer f =
                else return buffer
 
 
-receiveBatch :: SwitchHandle -> IO (Maybe [(TransactionID, SCMessage)])
+receiveBatch :: SwitchHandle a -> IO (Maybe [(TransactionID, SCMessage a)])
 receiveBatch sh@(SwitchHandle (_, s,_,_,inBufferRef,_,_,_)) = 
   do newBatchBS <- recv s batchSize
      if S.length newBatchBS == 0
@@ -434,8 +450,10 @@ receiveBatch sh@(SwitchHandle (_, s,_,_,inBufferRef,_,_,_)) =
                return (Just chunks)
 {-# INLINE receiveBatch #-}
 
-splitChunks :: SwitchHandle -> S.ByteString -> IO ([(TransactionID, SCMessage)], S.ByteString)
-splitChunks sh buffer = go buffer []
+splitChunks :: SwitchHandle a -> 
+               S.ByteString -> 
+               IO ([(TransactionID, SCMessage a)], S.ByteString)
+splitChunks sh@(SwitchHandle (_,_,_,_,_,_,_,OpenFlowServer (_,_,parser))) buffer = go buffer []
   where 
     go buffer chunks =
       if S.length buffer < headerSize
@@ -446,7 +464,7 @@ splitChunks sh buffer = go buffer []
             let expectedBodyLen = fromIntegral (msgLength header) - headerSize
             in -- putStrLn ("msg len: " ++ show expectedBodyLen) >> 
                if expectedBodyLen <= S.length buffer'
-               then let (msg, buffer'') = {-# SCC "splitChunks3" #-} runGet (getSCMessageBody header) buffer'
+               then let (msg, buffer'') = {-# SCC "splitChunks3" #-} runGet (getSCMessageBody parser header) buffer'
                     in case msg of 
                           (xid, SCEchoRequest bytes) -> do sendToSwitch sh (xid, CSEchoReply bytes) 
                                                            go buffer'' chunks
@@ -456,8 +474,8 @@ splitChunks sh buffer = go buffer []
             
 -- | Blocks until a message is received from the switch or the connection is closed.
 -- Returns `Nothing` only if the connection is closed.
-receiveFromSwitch :: SwitchHandle -> IO (Maybe (TransactionID, SCMessage))
-receiveFromSwitch sh@(SwitchHandle (clientAddr,s,_,_,_,_,_,_)) 
+receiveFromSwitch :: SwitchHandle a -> IO (Maybe (TransactionID, SCMessage a))
+receiveFromSwitch sh@(SwitchHandle (clientAddr,s,_,_,_,_,_,OpenFlowServer (_,_,parser))) 
   = do hdrbs <- recv s headerSize 
        if (headerSize /= S.length hdrbs) 
          then if S.length hdrbs == 0 
@@ -471,7 +489,7 @@ receiveFromSwitch sh@(SwitchHandle (clientAddr,s,_,_,_,_,_,_))
                                     when (expectedBodyLen /= S.length bodybs) (error "error reading body")
                                     return bodybs
                             else return S.empty
-                  let msg = fst (runGet (getSCMessageBody header) bodybs ) in 
+                  let msg = fst (runGet (getSCMessageBody parser header) bodybs ) in 
                       case msg of 
                         (xid, SCEchoRequest bytes) -> do sendToSwitch sh (xid, CSEchoReply bytes)
                                                          receiveFromSwitch sh
@@ -479,14 +497,14 @@ receiveFromSwitch sh@(SwitchHandle (clientAddr,s,_,_,_,_,_,_))
 {-# INLINE receiveFromSwitch #-}
 
 -- | Send a message to the switch.
-sendToSwitch :: SwitchHandle -> (TransactionID, CSMessage) -> IO ()       
+sendToSwitch :: SwitchHandle a -> (TransactionID, CSMessage) -> IO ()       
 sendToSwitch (SwitchHandle (_,s,fptr,_,_,_,casLock,_)) msg =
   do bytes <- withForeignPtr fptr $ \ptr -> Strict.runPut ptr (putCSMessage msg) 
      sendAll s (S.fromForeignPtr fptr 0 bytes)
 {-# INLINE sendToSwitch #-}    
      
 -- | Send a message to the switch.
-sendToSwitch2 :: SwitchHandle -> (TransactionID, CSMessage) -> IO ()       
+sendToSwitch2 :: SwitchHandle a -> (TransactionID, CSMessage) -> IO ()       
 sendToSwitch2 (SwitchHandle (_,s,fptr,_,_,_,casLock,_)) msg =
   let !bs = Strict.runPutToByteString 512 (putCSMessage msg)
   in withSpinLock casLock (sendAll s bs)
@@ -494,21 +512,21 @@ sendToSwitch2 (SwitchHandle (_,s,fptr,_,_,_,casLock,_)) msg =
 
 
 
-sendBatch :: SwitchHandle -> Int -> [(TransactionID, CSMessage)] -> IO ()     
+sendBatch :: SwitchHandle a -> Int -> [(TransactionID, CSMessage)] -> IO ()     
 sendBatch (SwitchHandle(_,s,_,_,_,_,_,_)) maxSize batch = 
      sendMany s $ map (\msg -> Strict.runPutToByteString maxSize (putCSMessage msg)) batch
 {-# INLINE sendBatch #-}
      
 
-sendBatches :: SwitchHandle -> Int -> [[(TransactionID, CSMessage)]] -> IO ()     
+sendBatches :: SwitchHandle a -> Int -> [[(TransactionID, CSMessage)]] -> IO ()     
 sendBatches (SwitchHandle(_,s,fptr,_,_,_,_,_)) maxSize batches = 
   do bytes <- withForeignPtr fptr $ \ptr -> Strict.runPut ptr (mapM_ (mapM_ putCSMessage) batches)
      sendAll s (S.fromForeignPtr fptr 0 bytes)
 {-# INLINE sendBatches #-}
   
      
-sendToSwitchWithID :: OpenFlowServer -> SwitchID -> (TransactionID, CSMessage) -> IO Bool
-sendToSwitchWithID (OpenFlowServer (_,shmr)) sid msg 
+sendToSwitchWithID :: OpenFlowServer a -> SwitchID -> (TransactionID, CSMessage) -> IO Bool
+sendToSwitchWithID (OpenFlowServer (_,shmr,_)) sid msg 
   = do switchHandleMap <- readIORef shmr 
        case {-# SCC "lookup-switch" #-} Map.lookup sid switchHandleMap of
          Nothing -> do -- hPrintf stderr "Tried to send message to switch: %d, but it is no longer connected.\nMessage was %s.\n" sid (show msg)
@@ -518,8 +536,8 @@ sendToSwitchWithID (OpenFlowServer (_,shmr)) sid msg
 {-# INLINE sendToSwitchWithID #-}                                        
      
 
-sendToSwitchWithID2 :: OpenFlowServer -> SwitchID -> (TransactionID, CSMessage) -> IO ()                                             
-sendToSwitchWithID2 (OpenFlowServer (_,shmr)) sid msg 
+sendToSwitchWithID2 :: OpenFlowServer a -> SwitchID -> (TransactionID, CSMessage) -> IO ()                                             
+sendToSwitchWithID2 (OpenFlowServer (_,shmr,_)) sid msg 
   = do switchHandleMap <- readIORef shmr 
        case Map.lookup sid switchHandleMap of
          Nothing -> printf "Tried to send message to switch: %d, but it is no longer connected.\nMessage was %s.\n" sid (show msg)
@@ -529,15 +547,15 @@ sendToSwitchWithID2 (OpenFlowServer (_,shmr)) sid msg
 
 
 -- | Close a switch connection.     
-closeSwitchHandle :: SwitchHandle -> IO ()    
-closeSwitchHandle (SwitchHandle (_, s,_,_,_,sid,_,OpenFlowServer (_, shmr))) = 
+closeSwitchHandle :: SwitchHandle a -> IO ()    
+closeSwitchHandle (SwitchHandle (_, s,_,_,_,sid,_,OpenFlowServer (_, shmr,_))) = 
   do atomicModifyIORef shmr (\switchHandleMap -> let map' = Map.delete sid switchHandleMap
                                                  in map' `seq` (map', ())
                             )
      sClose s
      -- writeIORef shmr (Map.delete sid switchHandleMap) 
 
-handle2SwitchID :: SwitchHandle -> SwitchID
+handle2SwitchID :: SwitchHandle a -> SwitchID
 handle2SwitchID (SwitchHandle (_,_,_,_,_,sid,_,_)) = sid
 {-# INLINE handle2SwitchID #-}    
 

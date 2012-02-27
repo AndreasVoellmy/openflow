@@ -89,7 +89,7 @@ eth_ip_packet = withFrame fromIPPacket
 eth_ip_tcp_packet :: EthernetFrame -> Maybe (EthernetHeader :*: IPHeader :*: TCPHeader :*: HNil)
 eth_ip_tcp_packet = withFrame $ fromIPPacket >=> withIPPacket fromTCPPacket
 
-eth_ip_udp_packet :: EthernetFrame -> Maybe (EthernetHeader :*: IPHeader :*: UDPHeader :*: B.ByteString :*: HNil)
+eth_ip_udp_packet :: EthernetFrame -> Maybe (EthernetHeader :*: IPHeader :*: UDPHeader :*: HNil)
 eth_ip_udp_packet = withFrame $ fromIPPacket >=> withIPPacket fromUDPPacket
 
 eth_arp_packet :: EthernetFrame -> Maybe (EthernetHeader :*: ARPPacket :*: HNil)
@@ -153,8 +153,7 @@ arpReply sha spa tha tpa = hCons hdr (hCons (ARPInEthernet ( body)) hNil)
 -- | Parser for Ethernet frames.
 getEthernetFrame :: Strict.Get EthernetFrame
 getEthernetFrame = do 
-  hdr <- {-# SCC "getEthHeader" #-} getEthHeader
-  -- r <- Strict.remaining
+  hdr <- getEthHeader
   if typeCode hdr == ethTypeIP
     then do ipPacket <- getIPPacket
             return $ hCons hdr (hCons (IPInEthernet ipPacket) hNil)            
@@ -163,11 +162,7 @@ getEthernetFrame = do
                  case mArpPacket of
                    Just arpPacket -> return $ hCons hdr (hCons (ARPInEthernet arpPacket) hNil)
                    Nothing -> error "unknown ethernet frame"
---                     do body <- Strict.getByteString r
---                        return $ hCons hdr (hCons (UninterpretedEthernetBody B.empty) hNil)  
          else error "unknown ethernet frame" 
-              --do body <- Strict.getByteString r
-              --   return $ hCons hdr (hCons (UninterpretedEthernetBody B.empty) hNil)  
 {-# INLINE getEthernetFrame #-}
 
 getEthernetFrame2 :: Int -> Binary.Get EthernetFrame

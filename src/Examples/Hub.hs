@@ -34,13 +34,13 @@ getPortNumber
          else return (read (args !! 0))
 
 
-handleSwitch :: SwitchHandle -> IO ()
+handleSwitch :: SwitchHandle EthernetFrame -> IO ()
 handleSwitch switch 
   = do untilNothing (receiveFromSwitch switch) (messageHandler switch)
        closeSwitchHandle switch
 
 
-messageHandler :: SwitchHandle -> (TransactionID, SCMessage) -> IO ()
+messageHandler :: SwitchHandle EthernetFrame -> (TransactionID, SCMessage EthernetFrame) -> IO ()
 messageHandler switch (xid, scmsg) =
   case scmsg of
     PacketIn pkt        -> 

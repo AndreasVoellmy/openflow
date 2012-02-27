@@ -42,6 +42,7 @@ Library
     Nettle.OpenFlow.Messages
     Nettle.OpenFlow.StrictPut
     Nettle.OpenFlow.Get
+    Nettle.OpenFlow.GetInternal
     Nettle.OpenFlow.MessagesBinary
     Nettle.OpenFlow
     Nettle.Servers.Server
