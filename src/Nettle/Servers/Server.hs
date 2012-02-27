@@ -64,7 +64,7 @@ import Foreign.C.Types
 import Network.Socket.Internal (throwSocketErrorIfMinus1RetryMayBlock)
 import GHC.Base
 import GHC.Ptr
-import Debug.Trace (traceEventIO)
+import GHC.Exts (traceEvent)
 
 data StrictList a = Cons !a (StrictList a) | Nil 
                   deriving (Show,Eq)
@@ -190,7 +190,7 @@ recvInner :: CInt -> Int -> Ptr Word8 -> IO Int
 recvInner s nbytes ptr =
     fmap fromIntegral $
         throwSocketErrorIfMinus1RetryMayBlock "recv"
-        (traceEventIO ("Read wait socket " ++ show s) >> threadWaitRead (fromIntegral s)) $
+        (traceEvent ("Read wait socket " ++ show s) >> threadWaitRead (fromIntegral s)) $
         c_recv s (castPtr ptr) (fromIntegral nbytes) 0
 
 foreign import ccall unsafe "recv"
