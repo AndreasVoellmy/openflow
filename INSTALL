@@ -1,0 +1,55 @@
+WARNING: The instructions below are very outdated. 
+
+Install Nettle
+=====================================================================
+Library will be downloaded from Hackage automatically, compiled, and 
+installed. Documentation will also be generated and installed in the
+default system location.
+
+Just run:
+
+  cabal install nettle
+
+You will still need to install the .nettle directory for some
+functionality.
+
+
+Compiling Individual Applications
+=====================================================================
+A sample application is included in the src/Examples/ directory. 
+After installing, it can be compiled using "ghc --make" 
+(see ghc documentation for details). For example, you can build
+the example application by moving to 
+src/Examples/SimpleImperativeIONetworkControl and then running
+
+  ghc --make NetLearningSwitch.hs
+
+
+Install Nekit
+=====================================================================
+Netkit can be used to run OpenFlow on virtualized switches. You
+should follow the instructions at http://netkit.org to install
+it. However, there are known bugs as of the 2009/11/26 release of
+Netkit. After installation, please also do the following to fix
+these. Let <netkit> denote the directory in which you installed
+Netkit.
+
+[Netkit Bug](http://bugs.netkit.org/show_bug.cgi?id=9)
+------------------------------------------------------
+To fix, in <netkit>/bin/script_utils, line 271:
+Replace the double equal sign `==` with a single equal sign `=`.
+
+Netkit Bug: Kernel modules do not load.
+--------------------------------------------------------------
+Reported by Ashish in email to Netkit mailing list dated 20-Jul-2010.
+To fix, in <netkit>/bin/vstart, change line 536 as follows:
+-KERNEL_MODULES_DIRECTORY=`dirname $VM_KERNEL`/modules
++eval KERNEL_MODULES_DIRECTORY=`dirname $VM_KERNEL`/modules
+
+
+Copy .nettle Configuration Directory
+=====================================================================
+This directory contains specific files that can be used to run
+OpenFlow networks in Netkit labs. We recommend that this
+directory be named ".nettle" and be within your home directory.
+

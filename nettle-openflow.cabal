@@ -1,0 +1,70 @@
+Name:           nettle-openflow
+Version:        0.2.0
+Synopsis:       OpenFlow protocol messages, binary formats, and servers. 
+Cabal-Version:  >=1.2
+Build-Type:     Simple
+Stability:      Experimental
+Category:       Network
+License: 	BSD3
+License-file:   LICENSE
+Author: 	Andreas Voellmy, Ashish Agarwal, John Launchbury
+Maintainer: 	andreas.voellmy@yale.edu
+
+Description: 
+  This package provides data types that model the messages of the OpenFlow protocol, 
+  functions that implement serialization and deserialization between these data
+  types and their binary representations in the protocol, and an efficient OpenFlow server.
+  The library is under active development. 
+
+extra-source-files:
+  src/Examples/Hub.hs
+  src/Examples/Flood.hs
+  src/Nettle/OpenFlow/Common.h
+
+Library
+  hs-source-dirs: src
+  ghc-options: -O2 -funbox-strict-fields
+  cpp-options: "-DOPENFLOW_VERSION=1"
+  exposed-modules:
+    Nettle.Ethernet.EthernetAddress
+    Nettle.Ethernet.EthernetFrame
+    Nettle.Ethernet.AddressResolutionProtocol
+    Nettle.IPv4.IPAddress 
+    Nettle.IPv4.IPPacket
+    Nettle.OpenFlow.Port
+    Nettle.OpenFlow.Action
+    Nettle.OpenFlow.Switch
+    Nettle.OpenFlow.Match
+    Nettle.OpenFlow.FlowTable
+    Nettle.OpenFlow.Statistics
+    Nettle.OpenFlow.Error
+    Nettle.OpenFlow.Packet
+    Nettle.OpenFlow.Messages
+    Nettle.OpenFlow.StrictPut
+    Nettle.OpenFlow.Get
+    Nettle.OpenFlow.MessagesBinary
+    Nettle.OpenFlow
+    Nettle.Servers.Server
+    Nettle.Servers.Client
+    Nettle.Servers.MultiplexedTCPServer
+    Nettle.Topology.ExtendedDouble
+    Nettle.Topology.LabelledGraph
+    Nettle.Topology.FloydWarshall
+    Nettle.Topology.Topology
+    Nettle.Topology.DirectedGraphTopology
+    Nettle.Topology.Dijkstra
+
+  build-depends:
+    base >= 4.4.0.0 && < 5
+    , bytestring
+    , binary 
+    , mtl
+    , parsec >= 3.1
+    , network >= 2.3
+    , containers
+    , bimap 
+    , HList
+    , syb 
+    , array, IORefCAS, PSQueue
+
+
