@@ -1,5 +1,5 @@
 Name:           nettle-openflow
-Version:        0.2.0
+Version:        0.3.0
 Synopsis:       OpenFlow protocol messages, binary formats, and servers. 
 Cabal-Version:  >=1.2
 Build-Type:     Simple
@@ -25,6 +25,8 @@ Library
   hs-source-dirs: src
   ghc-options: -O2 -funbox-strict-fields
   cpp-options: "-DOPENFLOW_VERSION=1"
+  other-modules: 
+    Nettle.Servers.Server.Internal
   exposed-modules:
     Nettle.Ethernet.EthernetAddress
     Nettle.Ethernet.EthernetFrame
@@ -45,6 +47,7 @@ Library
     Nettle.OpenFlow.GetInternal
     Nettle.OpenFlow.MessagesBinary
     Nettle.OpenFlow
+    Nettle.Servers.EventServer
     Nettle.Servers.Server
     Nettle.Servers.Client
     Nettle.Servers.MultiplexedTCPServer
@@ -61,7 +64,7 @@ Library
     , binary 
     , mtl
     , parsec >= 3.1
-    , network >= 2.3
+    , network == 2.4.0.1
     , containers
     , bimap 
     , HList
