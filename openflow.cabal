@@ -65,4 +65,4 @@ library
     containers,
     deepseq-generics,
     hashable >= 1.2.1.0,
-    network
+    network >= 2.6.0.2
