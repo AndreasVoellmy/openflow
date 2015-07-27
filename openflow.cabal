@@ -63,6 +63,6 @@ library
     binary >= 0.7.0,
     bytestring,
     containers,
-    deepseq-generics,
+    deepseq-generics >= 0.1.1.2,
     hashable >= 1.2.1.0,
     network >= 2.6.0.2
