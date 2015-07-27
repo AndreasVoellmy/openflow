@@ -60,9 +60,9 @@ library
     aeson >= 0.7.0.6 && <= 0.9.0.1, 
     base >= 4.4.0.0 && <= 5,
     bimap >= 0.2.4 && <= 0.3,
-    binary >= 0.7.0 && <= 0.7.6,
+    binary >= 0.7.0,
     bytestring,
-    containers >= 0.5.5.1,
-    deepseq-generics == 0.1.1.2,
+    containers,
+    deepseq-generics,
     hashable >= 1.2.1.0,
     network
