@@ -1,7 +1,7 @@
 Name:           openflow
 Version:        0.1.5
 Synopsis:       OpenFlow
-Cabal-Version:  >=1.8
+Cabal-Version:  >=1.10
 Build-Type:     Simple
 Stability:      Experimental
 Category:       Network
@@ -48,7 +48,7 @@ library
 
  ghc-options: -funbox-strict-fields -O2 -Wall
  hs-source-dirs: src
-
+ default-language: Haskell2010
  build-depends:
     aeson, 
     base >= 4.4.0.0 && <= 5,

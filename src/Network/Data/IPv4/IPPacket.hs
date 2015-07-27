@@ -168,8 +168,8 @@ getIPBody (hdr@(IPHeader {..}), nwproto)
   | otherwise             = return (hdr, UninterpretedIPBody nwproto)
 {-# INLINE getIPBody #-}
 
-ipChecksum_ :: IPHeader -> Word8 -> Word16
-ipChecksum_ hdr nwproto = csum16 $ runPut $ putIPHeader hdr nwproto 0
+-- ipChecksum_ :: IPHeader -> Word8 -> Word16
+-- ipChecksum_ hdr nwproto = csum16 $ runPut $ putIPHeader hdr nwproto 0
 
 csum16 :: L.ByteString -> Word16
 csum16 bs = complement $ x + y
