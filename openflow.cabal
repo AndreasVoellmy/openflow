@@ -16,11 +16,13 @@ Description:
   defines serialization and deserialization methods using the binary package, and provides some simple
   servers that can be used with these data types.
 
+extra-source-files: Setup.hs
+
 source-repository head
   type: git
   location: git://github.com/AndreasVoellmy/openflow.git
 
-extra-source-files: Setup.hs
+
 
 library
  exposed-modules: 
