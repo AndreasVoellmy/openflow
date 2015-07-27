@@ -1936,11 +1936,11 @@ bitSetToSet :: (Ord a, Bits b) => [(Int, a)] -> b -> Set a
 bitSetToSet fields bitset =
   Set.fromList [ a | (i,a) <- fields, testBit bitset i ]
 
-setToBitSet :: (Ord a, Bits b) => [(Int,a)] -> Set a -> b
+setToBitSet :: (Ord a, Bits b, Num b) => [(Int,a)] -> Set a -> b
 setToBitSet fields set =
-  foldl setBit zeroBits [ i | (i,a) <- fields, Set.member a set ]
+  foldl setBit 0 [ i | (i,a) <- fields, Set.member a set ]
 
-mapToBitSets :: (Ord a, Bits b) => [(Int,a)] -> Map a Bool -> (b,b)
+mapToBitSets :: (Ord a, Bits b, Num b) => [(Int,a)] -> Map a Bool -> (b,b)
 mapToBitSets fields m = (toBitSet trueSet, toBitSet allSet)
   where
     trueSet = Set.fromList $ [ a | (a, True) <- Map.assocs m]
