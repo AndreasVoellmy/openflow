@@ -7,8 +7,8 @@ Stability:      Experimental
 Category:       Network
 License: 	OtherLicense
 License-file:   LICENSE
-Author: 	Andreas Voellmy, Ashish Agarwal, John Launchbury
-Maintainer: 	Andreas Voellmy <andreas.voellmy@gmail.com>
+Author: 	Andreas Voellmy <andreas.voellmy@gmail.com>
+Maintainer: 	Andreas Voellmy 
 homepage:       https://github.com/AndreasVoellmy/openflow
 Description: 
   This package implements the OpenFlow 1.0 and a large part of the OpenFlow 1.3 protocols.
@@ -16,7 +16,7 @@ Description:
   defines serialization and deserialization methods using the binary package, and provides some simple
   servers that can be used with these data types.
 
-extra-source-files: Setup.hs
+extra-source-files: Setup.hs README.md
 
 source-repository head
   type: git
