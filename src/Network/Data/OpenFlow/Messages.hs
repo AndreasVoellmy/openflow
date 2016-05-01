@@ -35,9 +35,7 @@ data SCMessage    = SCHello TransactionID               -- ^ Sent after a switch
                   | Error         TransactionID !SwitchError -- ^ Switch reports an error
                   | BarrierReply TransactionID  -- ^ Switch responds that a barrier has been processed
                   | QueueConfigReply TransactionID !QueueConfigReply
-                  deriving (Show,Eq)
-
-instance NFData SCMessage                       
+                  deriving (Show, Eq)
 
 -- |The controller can send these messages to the switch.
 data CSMessage 

@@ -12,6 +12,7 @@ module Network.Data.OpenFlow.MessagesBinary
        , putSCMessage
        ) where
 
+import Prelude hiding (mconcat)
 import Network.Data.Ethernet.EthernetAddress
 import Network.Data.Ethernet.EthernetFrame
 import Network.Data.IPv4.IPAddress
@@ -179,8 +180,6 @@ data OFPHeader =
             , msgLength        :: !Word16 
             , msgTransactionID :: !M.TransactionID 
             } deriving (Show,Eq)
-
-instance NFData OFPHeader
 
 headerSize :: Int
 headerSize = 8 

@@ -40,7 +40,7 @@ import Network.Data.IPv4.IPPacket
 import Network.Data.OpenFlow.Match
 import Network.Data.OpenFlow.Port
 import Data.Bits
-import Data.Monoid
+import Data.Monoid()
 import Text.Printf (printf)
 
 {-
@@ -328,5 +328,3 @@ match b =
 
 matchOrError :: MatchBuilder -> Either Error Match
 matchOrError (MatchBuilder f) = f (Right emptyMatch)
-
-        
