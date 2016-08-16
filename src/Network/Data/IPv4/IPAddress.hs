@@ -82,8 +82,8 @@ ipAddressToWord32 (IPAddress a) = a
 
 ipAddress :: Word8 -> Word8 -> Word8 -> Word8 -> IPAddress
 ipAddress b1 b2 b3 b4 = 
-    IPAddress $ 
-	foldl (\a b -> shift a 8 + fromIntegral b) (0 :: Word32) [b1,b2,b3,b4]
+    IPAddress $
+        foldl (\a b -> shift a 8 + fromIntegral b) (0 :: Word32) [b1,b2,b3,b4]
 
 getIPAddress :: Get IPAddress
 getIPAddress = getWord32be >>= return . IPAddress

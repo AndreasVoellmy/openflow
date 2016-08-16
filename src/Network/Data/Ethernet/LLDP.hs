@@ -1,4 +1,5 @@
 {-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE DeriveGeneric, DeriveAnyClass #-}
 
 -- | This module defines the data type of LLDP messages and defines LLDP parser
 -- and serialization functions. This module is very, very far from complete.
@@ -27,13 +28,17 @@ import qualified Data.ByteString as B
 import Control.Exception (assert)
 import Data.Bits (shiftR, shiftL, (.&.), (.|.))
 import Text.Printf (printf)
+import Control.DeepSeq (NFData)
+import GHC.Generics (Generic)
 
 -- | An LLDP Data Unit (LLDP) consists of three values: chassis id, port id,
 -- and time-to-live.
 data LLDPDU = LLDPDU { chassisIDTLV  :: !ChassisID
                      , portIDTLV     :: !(PortIDSubType, TLVPortID)
                      , timeToLiveTLV :: !TTL
-                     } deriving (Eq, Show)
+                     } deriving (Eq, Show, Generic)
+
+instance NFData LLDPDU
 
 type TLVType = Word8
 type TLVLength = Word16
@@ -93,7 +98,7 @@ data PortIDSubType = InterfaceAlias
                    | AgentCircuitID
                    | LocallyAssigned
                    | Reserved
-                   deriving (Show,Read,Eq,Ord,Enum)
+                   deriving (Show,Read,Eq,Ord,Enum,Generic,NFData)
 
 portIDSubTypeCode_2_type :: PortIDSubTypeCode -> PortIDSubType
 portIDSubTypeCode_2_type c

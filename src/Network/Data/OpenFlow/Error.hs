@@ -1,3 +1,5 @@
+{-# LANGUAGE DeriveGeneric, DeriveAnyClass #-}
+
 module Network.Data.OpenFlow.Error ( 
   SwitchError (..)
   , HelloFailure (..)
@@ -9,6 +11,8 @@ module Network.Data.OpenFlow.Error (
   ) where
 
 import Data.Word
+import Control.DeepSeq (NFData)
+import GHC.Generics (Generic)
 
 -- | When a switch encounters an error condition, it sends the controller
 -- a message containing the information in @SwitchErrorRecord@.
@@ -18,11 +22,15 @@ data SwitchError = HelloFailed          HelloFailure String
                  | FlowModFailed        FlowModError [Word8]
                  | PortModFailed        PortModError [Word8]
                  | QueueOperationFailed QueueOpError [Word8]
-                 deriving (Show, Eq)
-                                
+                 deriving (Generic, Show, Eq)
+                   
+instance NFData SwitchError
+             
 data HelloFailure = IncompatibleVersions
                   | HelloPermissionsError
-                  deriving (Show, Eq, Ord, Enum)
+                  deriving (Generic, Show, Eq, Ord, Enum)
+
+instance NFData HelloFailure
                            
 data RequestError = VersionNotSupported
                   | MessageTypeNotSupported
@@ -33,8 +41,9 @@ data RequestError = VersionNotSupported
                   | BadRequestLength
                   | BufferEmpty
                   | UnknownBuffer
-                  deriving (Show, Eq, Ord, Enum)
+                  deriving (Generic, Show, Eq, Ord, Enum)
 
+instance NFData RequestError
 
 data ActionError = UnknownActionType
                  | BadActionLength
@@ -45,22 +54,29 @@ data ActionError = UnknownActionType
                  | ActionPermissionsError
                  | TooManyActions
                  | InvalidQueue
-                 deriving (Show, Eq, Ord, Enum)
+                 deriving (Generic, Show, Eq, Ord, Enum)
                           
+instance NFData ActionError
+
 data FlowModError = TablesFull
                   | OverlappingFlow
                   | FlowModPermissionsError
                   | EmergencyModHasTimeouts
                   | BadCommand
                   | UnsupportedActionList
-                  deriving (Show, Eq, Ord, Enum)
+                  deriving (Generic, Show, Eq, Ord, Enum)
                     
+instance NFData FlowModError
+
 data PortModError = BadPort
                   | BadHardwareAddress
-                  deriving (Show, Eq, Ord, Enum)                    
+                  deriving (Generic, Show, Eq, Ord, Enum)                    
+
+instance NFData PortModError
 
 data QueueOpError = QueueOpBadPort
                   | QueueDoesNotExist
                   | QueueOpPermissionsError
-                  deriving (Show, Eq, Ord, Enum)
+                  deriving (Generic, Show, Eq, Ord, Enum)
 
+instance NFData QueueOpError

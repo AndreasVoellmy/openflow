@@ -1,4 +1,5 @@
 {-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE DeriveGeneric, DeriveAnyClass #-}
 
 module Network.Data.OpenFlow.Statistics (
   StatsRequest (..)
@@ -26,6 +27,8 @@ import Network.Data.OpenFlow.FlowTable
 import Control.Monad (liftM,liftM2)
 import Data.Aeson.TH
 import Data.Int
+import Control.DeepSeq (NFData)
+import GHC.Generics (Generic)
 
 data StatsRequest
     = FlowStatsRequest {
@@ -44,15 +47,15 @@ data StatsRequest
         portStatsQuery :: PortQuery
       }
     | QueueStatsRequest { queueStatsPort :: PortQuery, queueStatsQuery:: QueueQuery }
-    deriving (Show,Eq)    
+    deriving (Show,Eq,Generic,NFData)    
 
-data PortQuery = AllPorts | SinglePort PortID deriving (Show,Eq,Ord)
-data QueueQuery = AllQueues | SingleQueue QueueID deriving (Show,Eq,Ord)
+data PortQuery = AllPorts | SinglePort PortID deriving (Show,Eq,Ord,Generic,NFData)
+data QueueQuery = AllQueues | SingleQueue QueueID deriving (Show,Eq,Ord,Generic,NFData)
 
 data TableQuery = AllTables 
                 | EmergencyTable
                 | Table FlowTableID 
-                  deriving (Show,Eq)
+                  deriving (Show,Eq,Generic,NFData)
 
 
 
@@ -63,7 +66,7 @@ data StatsReply
     | TableStatsReply !MoreToFollowFlag [TableStats]
     | PortStatsReply !MoreToFollowFlag [(PortID,PortStats)]
     | QueueStatsReply !MoreToFollowFlag [QueueStats]
-      deriving (Show,Eq)
+      deriving (Show,Eq,Generic,NFData)
 
 type MoreToFollowFlag = Bool
 
@@ -72,13 +75,13 @@ data Description = Description { manufacturerDesc :: String
                                  , softwareDesc     :: String
                                  , serialNumber     :: String 
                                  , datapathDesc     :: String 
-                                 } deriving (Show,Eq)
+                                 } deriving (Show,Eq,Generic,NFData)
 
 data AggregateFlowStats = 
   AggregateFlowStats { aggregateFlowStatsPacketCount :: Integer, 
                        aggregateFlowStatsByteCount   :: Integer, 
                        aggregateFlowStatsFlowCount   :: Integer
-                     } deriving (Show, Eq)
+                     } deriving (Show, Eq,Generic,NFData)
                        
 
 data FlowStats = FlowStats {
@@ -94,7 +97,7 @@ data FlowStats = FlowStats {
       flowStatsPacketCount         :: !Int64,
       flowStatsByteCount           :: !Int64
     }
-    deriving (Show,Eq)
+    deriving (Show,Eq,Generic,NFData)
 
 data TableStats = 
   TableStats { 
@@ -103,7 +106,7 @@ data TableStats =
     tableStatsMaxEntries   :: Integer, 
     tableStatsActiveCount  :: Integer, 
     tableStatsLookupCount  :: Integer, 
-    tableStatsMatchedCount :: Integer } deriving (Show,Eq)
+    tableStatsMatchedCount :: Integer } deriving (Show,Eq,Generic,NFData)
 
 data PortStats 
     = PortStats { 
@@ -119,7 +122,7 @@ data PortStats
         portStatsReceiverOverrunError :: Maybe Double, 
         portStatsReceiverCRCError     :: Maybe Double, 
         portStatsCollisions           :: Maybe Double
-      } deriving (Show,Eq)
+      } deriving (Show,Eq,Generic,NFData)
 
 -- | A port stats value with all fields missing.
 nullPortStats :: PortStats
@@ -198,7 +201,7 @@ data QueueStats = QueueStats { queueStatsPortID             :: PortID,
                                queueStatsQueueID            :: QueueID, 
                                queueStatsTransmittedBytes   :: Integer, 
                                queueStatsTransmittedPackets :: Integer, 
-                               queueStatsTransmittedErrors  :: Integer } deriving (Show,Eq)
+                               queueStatsTransmittedErrors  :: Integer } deriving (Show,Eq,Generic,NFData)
 
 $(deriveJSON defaultOptions ''PortStats)
 

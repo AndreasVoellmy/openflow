@@ -1,5 +1,6 @@
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE DeriveGeneric, DeriveAnyClass #-}
 
 module Network.Data.OF13.Message (
   Message(..)
@@ -63,7 +64,6 @@ import Network.Data.Ethernet hiding
   (getEthernetAddress, putEthernetAddress)
 import Network.Data.IPv4.IPAddress hiding (getIPAddress, putIPAddress)
 
-import Control.Applicative
 import Control.Exception hiding (mask)
 import Control.Monad
 import Data.Bimap (Bimap)
@@ -80,6 +80,8 @@ import qualified Data.Set as Set
 import Data.Map (Map)
 import qualified Data.Map as Map
 -- import qualified Debug.Trace as Debug
+import Control.DeepSeq (NFData)
+import GHC.Generics (Generic)
 
 
 data Message = Hello       { xid :: XID, len :: Len }
@@ -220,7 +222,7 @@ data Message = Hello       { xid :: XID, len :: Len }
              | BarrierRequest { xid :: XID }
              | BarrierReply { xid :: XID }
              | Undefined Header
-      deriving (Show,Eq)
+      deriving (Show,Eq,Generic,NFData)
 
 type MultipartTypeCode = Word16
 
@@ -233,10 +235,10 @@ data TableFeature = TableFeature { tableFeatureTableID :: TableID
                                  , metadataWrite :: Word64
                                  , maxEntries :: Int
                                  , tableProperties :: [TableProperty]
-                                 } deriving (Eq,Show,Ord)
+                                 } deriving (Eq,Show,Ord,Generic,NFData)
 
 data TableProperty = NoTableProperty --InstructionsProperty { }
-                   deriving (Show,Eq,Ord)
+                   deriving (Show,Eq,Ord,Generic,NFData)
 
 type Timeout = Word16
 type TableID = Word8
@@ -248,7 +250,7 @@ data Instruction = GotoTable TableID
                  | ApplyActions [Action]
                  | ClearActions
                  | Meter MeterID
-                 deriving (Show,Eq)
+                 deriving (Show,Eq,Generic,NFData)
 
 type MeterID = Word32
 
@@ -268,14 +270,14 @@ data Group =
   | Select { weightedBuckets :: [(BucketWeight, ActionList)] }
   | Indirect { bucket :: ActionList }
   | FastFailover { failoverBuckets :: [FailoverBucket] }
-  deriving (Eq,Show,Ord)
+  deriving (Eq,Show,Ord,Generic,NFData)
 
 type BucketWeight = Word16
 data FailoverBucket = FailoverBucket { bucketActions :: ActionList
                                      , watchPort :: PortID
                                      , watchGroup :: GroupID
                                      }
-                    deriving (Eq,Ord,Show)
+                    deriving (Eq,Ord,Show,Generic,NFData)
 
 type GenericBucket = (BucketWeight, PortID, GroupID, ActionList)
 
@@ -334,7 +336,7 @@ data Action = Output { outputPortID :: PortID
             | DecNetworkTTL
             | SetNiciraRegister Int Word32
             | SetField OXM
-            deriving (Eq,Ord,Show)
+            deriving (Eq,Ord,Show,Generic,NFData)
 
 type QueueID = Word32
 type GroupID = Word32
@@ -349,7 +351,7 @@ data MultipartMessage = PortDesc [Port]
                       | AllTableStats [TableStats]
                       | AllPortStats [PortStats]
                       | GroupDesc [(GroupID, Group)]
-                      deriving (Eq, Show)
+                      deriving (Eq, Show,Generic,NFData)
 
 
 data PortStats = PortStats { statsPortID :: PortID
@@ -367,14 +369,14 @@ data PortStats = PortStats { statsPortID :: PortID
                            , collisions :: Int
                            , portDurationSec :: Int
                            , portDurationNanoSec :: Int
-                           } deriving (Eq,Ord,Show)
+                           } deriving (Eq,Ord,Show,Generic,NFData)
 
 data TableStats = TableStats { statsTableID :: Word8
                              , activeCount :: Int
                              , lookupCount :: Int
                              , matchedCount :: Int
                              } 
-                deriving (Eq,Ord,Show)
+                deriving (Eq,Ord,Show,Generic,NFData)
 
 type Header = (Word8, Word8, Len, XID)
 type XID = Word32
@@ -387,7 +389,7 @@ type PortID = Word32
 data PortStateChangeReason = PortAdd
                            | PortDelete
                            | PortModify
-                           deriving (Show,Eq,Ord,Enum)
+                           deriving (Show,Eq,Ord,Enum,Generic,NFData)
                                     
 data Port = Port { portNumber         :: PortID
                  , hwAddress          :: EthernetAddress
@@ -400,7 +402,7 @@ data Port = Port { portNumber         :: PortID
                  , peerFeatures       :: Set PortFeature
                  , currentSpeed       :: KiloBitsPerSecond
                  , maxSpeed           :: KiloBitsPerSecond
-                 } deriving (Show,Eq,Ord)
+                 } deriving (Show,Eq,Ord,Generic,NFData)
 
 isPortDown :: Port -> Bool
 isPortDown = Set.member PortDown . portConfig
@@ -426,27 +428,27 @@ data PortFeature = HD10Mb
                  | AutoNeg 
                  | Pause 
                  | PauseAsym
-                 deriving (Eq,Ord,Enum,Show)
+                 deriving (Eq,Ord,Enum,Show,Generic,NFData)
 
 data PortConfigFlag = PortDown 
                     | NoRecv 
                     | NoFwd 
                     | NoPacketIn 
-                    deriving (Eq,Ord,Enum,Show)
+                    deriving (Eq,Ord,Enum,Show,Generic,NFData)
 
 data PortStateFlag = LinkDown 
                    | Blocked 
                    | Live 
-                   deriving (Eq,Ord,Enum,Show)
+                   deriving (Eq,Ord,Enum,Show,Generic,NFData)
 
 data FlowRemovedReason = IdleTimeout 
                        | HardTimeout 
                        | FlowDelete 
                        | GroupDelete 
-                       deriving (Eq,Ord,Enum,Show)
+                       deriving (Eq,Ord,Enum,Show,Generic,NFData)
 
 data Match = MatchOXM { oxms :: [OXM] } 
-           deriving (Eq,Ord,Show)
+           deriving (Eq,Ord,Show,Generic,NFData)
 
 data OXM = OXMOther { oxmClass   :: Word16
                     , oxmField   :: Word8
@@ -468,7 +470,7 @@ data OXM = OXMOther { oxmClass   :: Word16
          | OXM { oxmOFField :: OXMOFField
                , oxmHasMask :: Bool
                }
-         deriving (Eq,Ord,Show)
+         deriving (Eq,Ord,Show,Generic,NFData)
 
 oxmHasMask' :: OXM -> Bool
 oxmHasMask' (InPort {}) = False
@@ -515,7 +517,7 @@ data OXMOFField = VLANID VLANMatch
                 | PBB_ISID Word32 Word32
                 | TunnelID Word64 Word64
                 | IPv6_EXTHDR Word16
-                deriving (Eq,Ord,Show)
+                deriving (Eq,Ord,Show,Generic,NFData)
 
 type TCPPort = Word16
 type UDPPort = Word16
@@ -526,12 +528,12 @@ type MPLSLabel = Word32
 
 data VLANMatch = Absent
                | Present (Maybe Word16)
-               deriving (Eq,Ord,Show)
+               deriving (Eq,Ord,Show,Generic,NFData)
 
 data PacketInReason = NoMatch 
                     | MatchedAction 
                     | InvalidTTL 
-                    deriving (Eq,Ord,Enum,Show)
+                    deriving (Eq,Ord,Enum,Show,Generic,NFData)
 
 packetInReasonCodeMap :: Bimap PacketInReason Word8
 packetInReasonCodeMap = 
@@ -555,7 +557,7 @@ data ErrorType = HelloFailed
                | MeterModFailed
                | TableFeaturesFailed
                | ExperimenterError
-               deriving (Eq,Ord,Show)
+               deriving (Eq,Ord,Show,Generic,NFData)
 
 data BadRequestError = BadVersion 
                      | BadType
@@ -571,7 +573,7 @@ data BadRequestError = BadVersion
                      | BadPort
                      | BadPacket
                      | MultipartBufferOverflow
-                     deriving (Eq,Ord,Enum,Show)
+                     deriving (Eq,Ord,Enum,Show,Generic,NFData)
 
 badRequestCodeMap :: Bimap BadRequestError Word16
 badRequestCodeMap = 
@@ -603,7 +605,7 @@ data BadMatchError = BadMatchType
                    | BadMatchPrereq
                    | BadMatchDupField
                    | BadMatchPermissions
-                   deriving (Eq,Ord,Enum,Show)
+                   deriving (Eq,Ord,Enum,Show,Generic,NFData)
 
 badMatchCodeMap :: Bimap BadMatchError Word16
 badMatchCodeMap = 
@@ -630,7 +632,7 @@ data BadInstructionError = UnknownInstruction
                          | BadExperimenterType
                          | BadInstructionLength
                          | BadInstructionPermission
-                         deriving (Eq,Ord,Enum,Show)
+                         deriving (Eq,Ord,Enum,Show,Generic,NFData)
 
 badInstructionCodeMap :: Bimap BadInstructionError Word16
 badInstructionCodeMap =
@@ -660,7 +662,7 @@ data BadGroupModError = GroupExistsError
                       | GroupBadBucket
                       | GroupBadWatch
                       | GroupPermissionError
-                      deriving (Eq,Ord,Enum,Show)
+                      deriving (Eq,Ord,Enum,Show,Generic,NFData)
                                
 badGroupModCodeMap :: Bimap BadGroupModError Word16
 badGroupModCodeMap =
@@ -685,7 +687,7 @@ data ConfigFlag = FragNormal
                 | FragDrop
                 | FragReasm
                 -- What is this? | FragMask
-                deriving (Eq,Ord,Enum,Show)
+                deriving (Eq,Ord,Enum,Show,Generic,NFData)
 
 data SwitchCapability = FlowStats 
                       | HasTableStats
@@ -694,7 +696,7 @@ data SwitchCapability = FlowStats
                       | IPReassembly
                       | QueueStats
                       | PortBlocked
-                      deriving (Eq,Ord,Enum,Show)
+                      deriving (Eq,Ord,Enum,Show,Generic,NFData)
 
 
 configFlagsFields :: [(Int, ConfigFlag)]

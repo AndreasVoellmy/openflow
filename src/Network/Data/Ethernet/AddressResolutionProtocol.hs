@@ -1,4 +1,5 @@
 {-# LANGUAGE MultiParamTypeClasses, RecordWildCards, TypeOperators #-}
+{-# LANGUAGE DeriveGeneric, DeriveAnyClass #-}
 
 module Network.Data.Ethernet.AddressResolutionProtocol ( 
   ARPPacket (..)
@@ -14,16 +15,18 @@ import Network.Data.IPv4.IPAddress
 import Data.Word
 import qualified Data.Binary.Get as Strict
 import qualified Data.Binary.Put as Strict
+import Control.DeepSeq (NFData)
+import GHC.Generics (Generic)
 
 data ARPPacket = ARPQuery ARPQueryPacket
                | ARPReply ARPReplyPacket
-               deriving (Show, Eq)
+               deriving (Show, Eq, Generic, NFData)
 
 data ARPQueryPacket = 
   ARPQueryPacket { querySenderEthernetAddress :: EthernetAddress
                  , querySenderIPAddress       :: IPAddress
                  , queryTargetIPAddress       :: IPAddress
-                 } deriving (Show,Eq)
+                 } deriving (Show,Eq, Generic, NFData)
 
 
 data ARPReplyPacket = 
@@ -32,7 +35,7 @@ data ARPReplyPacket =
                  , replyTargetEthernetAddress :: EthernetAddress
                  , replyTargetIPAddress       :: IPAddress
                  } 
-  deriving (Show, Eq)
+  deriving (Show, Eq, Generic, NFData)
 
 arpOpCode :: ARPPacket -> Word16
 arpOpCode (ARPQuery _) = queryOpCode
