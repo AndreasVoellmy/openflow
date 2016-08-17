@@ -1,5 +1,6 @@
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE DisambiguateRecordFields, RecordWildCards #-}
+{-# LANGUAGE DeriveGeneric, DeriveAnyClass #-}
 
 module Network.Data.OpenFlow.Packet (
   -- * Sending packets
@@ -22,6 +23,8 @@ import Network.Data.OpenFlow.Action
 import Network.Data.Ethernet.EthernetFrame
 import Data.Maybe (isJust, fromJust)
 import Data.Word
+import Control.DeepSeq (NFData)
+import GHC.Generics (Generic)
 
 -- | A switch can be remotely commanded to send a packet. The packet
 -- can either be a packet buffered at the switch, in which case the
@@ -32,7 +35,7 @@ data PacketOut
         bufferIDData  :: !(Either BufferID B.ByteString),   -- ^either a buffer ID or the data itself
         packetInPort  :: !(Maybe PortID),                   -- ^the port at which the packet received, for the purposes of processing this command
         packetActions :: !ActionSequence                  -- ^actions to apply to the packet
-      } deriving (Eq,Show)
+      } deriving (Eq,Show,Generic,NFData)
 
 -- |A switch may buffer a packet that it receives. 
 -- When it does so, the packet is assigned a bufferID
@@ -75,14 +78,13 @@ data PacketInfo
         reasonSent     :: !PacketInReason, -- ^reason packet is being sent
         enclosedFrame  :: EthernetFrame,    -- ^result of parsing packetData field.
         rawBytes       :: !B.ByteString
-      } deriving (Show,Eq)
-
+      } deriving (Show,Eq,Generic,NFData)
 
 -- |A PacketInfo message includes the reason that the message
 -- was sent, namely either there was no match, or there was
 -- a match, and that match's actions included a Sent-To-Controller
 -- action.
-data PacketInReason = NotMatched | ExplicitSend deriving (Show,Read,Eq,Ord,Enum)
+data PacketInReason = NotMatched | ExplicitSend deriving (Show,Read,Eq,Ord,Enum,Generic,NFData)
 
 -- | The number of bytes in a packet.
 type NumBytes = Int

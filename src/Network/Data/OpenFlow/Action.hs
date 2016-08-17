@@ -1,4 +1,5 @@
 {-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE DeriveGeneric, DeriveAnyClass #-}
 
 module Network.Data.OpenFlow.Action (
   -- * Actions
@@ -22,6 +23,8 @@ module Network.Data.OpenFlow.Action (
   , vendorAction
   ) where
 
+import Control.DeepSeq (NFData)
+import GHC.Generics (Generic)
 import Prelude hiding (drop)
 import Network.Data.OpenFlow.Port
 import Network.Data.Ethernet.EthernetAddress
@@ -29,7 +32,6 @@ import Network.Data.Ethernet.EthernetFrame
 import Network.Data.IPv4.IPAddress
 import Network.Data.IPv4.IPPacket
 import Data.Word
-import Data.Monoid
 
 -- |The supported switch actions are denoted with these symbols.
 data ActionType = OutputToPortType    
@@ -45,7 +47,7 @@ data ActionType = OutputToPortType
                 | SetTransportDstPortType
                 | EnqueueType            
                 | VendorActionType
-                  deriving (Show,Read,Eq,Ord,Enum)
+                  deriving (Show,Read,Eq,Ord,Enum,Generic,NFData)
 
 -- | Each flow table entry contains a list of actions that will
 -- be executed when a packet matches the entry. 
@@ -67,7 +69,7 @@ data Action
         queueID     :: QueueID       -- ^where to enqueue the packets
       } -- ^output to queue
     | VendorAction VendorID [Word8] 
-    deriving (Show,Eq,Ord)
+    deriving (Show,Eq,Ord,Generic,NFData)
            
 
 -- | A @PseudoPort@ denotes the target of a forwarding
@@ -79,7 +81,7 @@ data PseudoPort = Flood                               -- ^send out all physical 
                 | ToController MaxLenToSendController -- ^send to controller
                 | NormalSwitching                     -- ^process with normal L2/L3 switching
                 | WithTable                           -- ^process packet with flow table
-                  deriving (Show,Read, Eq, Ord)
+                  deriving (Show,Read, Eq, Ord, Generic, NFData)
 
 -- | A send to controller action includes the maximum
 -- number of bytes that a switch will send to the 
@@ -93,7 +95,7 @@ type QueueID  = Word32
 -- lists provides methods for denoting the do-nothing action (@mempty@) and for concatenating action sequences @mconcat@. 
 -- type ActionSequence = [Action]
 data ActionSequence = ActionSequence !Int ![Action]
-                    deriving (Show, Eq, Ord)
+                    deriving (Show, Eq, Ord, Generic, NFData)
                              
 instance Monoid ActionSequence where                             
   mempty = drop

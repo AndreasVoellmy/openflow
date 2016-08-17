@@ -2,6 +2,7 @@
 {-# LANGUAGE MultiParamTypeClasses #-} 
 {-# LANGUAGE FunctionalDependencies #-}
 {-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE DeriveGeneric, DeriveAnyClass #-}
 
 -- | This module provides data structures for Ethernet frames
 -- as well as parsers and unparsers for Ethernet frames. 
@@ -51,6 +52,8 @@ import Network.Data.Ethernet.LLDP
 import Network.Data.IPv4.IPAddress
 import Network.Data.IPv4.IPPacket
 import Text.Printf (printf)
+import Control.DeepSeq (NFData)
+import GHC.Generics (Generic)
 
 -- | An Ethernet frame is either an IP packet, an ARP packet, or an uninterpreted @ByteString@.
 -- Based on http://en.wikipedia.org/wiki/File:Ethernet_Type_II_Frame_format.svg
@@ -63,7 +66,7 @@ data EthernetHeader   = EthernetHeader { etherDst :: !EthernetAddress,
                                          priorityCodePoint        :: !VLANPriority, 
                                          canonicalFormatIndicator :: !Bool, 
                                          vlanId                   :: !VLANID }
-                        deriving (Read,Show,Eq)
+                        deriving (Read,Show,Eq,Generic,NFData)
 
 -- | Ethernet type code, determines the type of payload carried by an Ethernet frame.
 type EthernetTypeCode = Word16
@@ -76,18 +79,18 @@ data EthernetBody   = IPInEthernet !IPPacket
                     | LLDPInEthernet !LLDPDU
                     | MagellanP4Packet MagellanP4Packet
                     | OtherEthernetBody UnknownFrame
-                   deriving (Show,Eq)
+                   deriving (Show,Eq,Generic,NFData)
 
 class IsEthernetBody a where
   etherTypeCode :: a -> EthernetTypeCode
   putEtherBody  :: a -> Put
 
 data UnknownFrame = UnknownFrame !EthernetTypeCode !S.ByteString
-                  deriving (Show,Read,Eq)
+                  deriving (Show,Read,Eq,Generic,NFData)
 
 data MagellanP4Packet = MagellanP4PacketIn Word8 EthernetFrame
                       | MagellanP4PacketOut (Either Word8 Word16) EthernetFrame
-                      deriving (Show,Eq)
+                      deriving (Show,Eq,Generic,NFData)
 
 instance IsEthernetBody UnknownFrame where
   etherTypeCode (UnknownFrame c _) = c

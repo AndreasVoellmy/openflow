@@ -1,6 +1,7 @@
 {-# LANGUAGE DisambiguateRecordFields, RecordWildCards, NamedFieldPuns #-}
 {-# LANGUAGE BangPatterns #-}
-{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DeriveGeneric, DeriveAnyClass #-}
+
 module Network.Data.OpenFlow.Match ( 
   Match (..)
   , MatchHeader(..)
@@ -31,13 +32,14 @@ import Network.Data.OpenFlow.Packet
 import Data.Aeson
 import qualified Data.List as List
 import Data.Maybe (isJust, catMaybes)
-import GHC.Generics
+import Control.DeepSeq (NFData)
+import GHC.Generics (Generic)
 
 
 -- | Each flow entry includes a match, which essentially defines packet-matching condition. 
 -- Fields that are left Nothing are "wildcards".
 data Match = Match !(Maybe PortID) !MatchHeader !MatchBody
-           deriving (Show,Read,Eq,Ord,Generic)
+           deriving (Show,Read,Eq,Ord,Generic,NFData)
 
 instance ToJSON Match
 instance FromJSON Match
@@ -46,7 +48,7 @@ data MatchHeader = MatchHeader { srcEthAddress, dstEthAddress       :: !(Maybe E
                                  vLANID                             :: !(Maybe VLANID), 
                                  vLANPriority                       :: !(Maybe VLANPriority), 
                                  ethFrameType                       :: !(Maybe EthernetTypeCode) }
-                 deriving (Show,Read,Eq,Ord, Generic)
+                 deriving (Show,Read,Eq,Ord, Generic,NFData)
 instance ToJSON MatchHeader
 instance FromJSON MatchHeader
 
@@ -55,7 +57,7 @@ data MatchBody = MatchBody { ipTypeOfService                    :: !(Maybe IP.IP
                              srcIPAddress, dstIPAddress         :: !IPAddressPrefix,
                              srcTransportPort, dstTransportPort :: !(Maybe IP.TransportPort) 
                            }
-               deriving (Show,Read,Eq,Ord, Generic)
+               deriving (Show,Read,Eq,Ord, Generic,NFData)
 instance ToJSON MatchBody
 instance FromJSON MatchBody
                         

@@ -1,4 +1,4 @@
-{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DeriveGeneric, DeriveAnyClass #-}
 
 module Network.Data.OpenFlow.Port (
   Port (..) 
@@ -19,6 +19,7 @@ module Network.Data.OpenFlow.Port (
 
 import Data.Word
 import Data.Map (Map)
+import Control.DeepSeq (NFData)
 import qualified Data.Map as Map
 import Network.Data.Ethernet.EthernetAddress
 
@@ -38,10 +39,11 @@ data Port
         portAdvertisedFeatures :: Maybe PortFeatures,    -- ^features advertised by port
         portSupportedFeatures  :: Maybe PortFeatures,    -- ^features supported by port
         portPeerFeatures       :: Maybe PortFeatures     -- ^features advertised by peer 
-      } deriving (Show,Read,Eq, Ord, Generic)
+      } deriving (Show, Read, Eq, Ord, Generic)
 
 instance ToJSON Port
 instance FromJSON Port
+instance NFData Port
 
 type PortID = Word16
 
@@ -50,8 +52,10 @@ data SpanningTreePortState = STPListening
                            | STPForwarding 
                            | STPBlocking 
                              deriving (Show,Read,Eq,Ord,Enum, Generic)
+
 instance ToJSON SpanningTreePortState
 instance FromJSON SpanningTreePortState
+instance NFData SpanningTreePortState
 
 -- | Possible behaviors of a physical port. Specification:
 --   @ofp_port_config@.
@@ -63,9 +67,11 @@ data PortConfigAttribute
     | NoFlooding     -- ^do not include this port when flooding
     | DropForwarded  -- ^drop packets forwarded to port
     | NoPacketInMsg  -- ^do not send packet-in messages for this port
-    deriving (Show,Read,Eq,Ord,Enum, Generic)
+    deriving (Show, Read, Eq, Ord, Enum, Generic)
+
 instance ToJSON PortConfigAttribute
 instance FromJSON PortConfigAttribute
+instance NFData PortConfigAttribute
 
 -- | Possible port features. Specification @ofp_port_features@.
 data PortFeature
@@ -82,8 +88,10 @@ data PortFeature
     | Pause
     | AsymmetricPause
     deriving (Show,Read,Eq, Ord, Generic)
+
 instance ToJSON PortFeature
 instance FromJSON PortFeature
+instance NFData PortFeature
 
 -- | Set of 'PortFeature's. Specification: bitmap of members in @enum
 --   ofp_port_features@.
@@ -123,7 +131,9 @@ type PortStatus  = (PortStatusUpdateReason, Port)
 data PortStatusUpdateReason = PortAdded 
                             | PortDeleted 
                             | PortModified 
-                              deriving (Show,Read,Eq,Ord,Enum)
+                              deriving (Generic,Show,Read,Eq,Ord,Enum)
+
+instance NFData PortStatusUpdateReason
 
 portAttributeOn :: PortID -> EthernetAddress -> PortConfigAttribute -> PortMod
 portAttributeOn pid addr attr = PortModRecord pid addr (Map.singleton attr True)

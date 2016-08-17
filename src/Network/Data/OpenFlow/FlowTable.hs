@@ -1,5 +1,6 @@
 {-# LANGUAGE DisambiguateRecordFields #-}
 {-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE DeriveGeneric, DeriveAnyClass #-}
 
 -- | A switch has some number of flow tables. Each flow table is a 
 -- prioritized list of entries containing a @Match@, a list of 
@@ -20,6 +21,8 @@ import Network.Data.OpenFlow.Action
 import Network.Data.OpenFlow.Match
 import Network.Data.OpenFlow.Packet
 import Data.Word
+import Control.DeepSeq (NFData)
+import GHC.Generics (Generic)
 
 type FlowTableID = Word8
 
@@ -65,7 +68,7 @@ data FlowMod = AddFlow { match             :: !Match
                                   outPort  :: !(Maybe PseudoPort), 
                                   priority :: !Priority
                                 } 
-                     deriving (Show, Eq)
+                     deriving (Show, Eq,Generic,NFData)
 
 type Cookie = Word64
 
@@ -76,7 +79,7 @@ type Priority = Word16
 -- associated with it.
 data TimeOut  = Permanent 
               | ExpireAfter !Word16
-                deriving (Show,Eq)
+                deriving (Show,Eq,Generic,NFData)
 
 
 -- | When a switch removes a flow, it may send a message containing the information
@@ -90,10 +93,10 @@ data FlowRemoved = FlowRemovedRecord { flowRemovedMatch         :: !Match,
                                        flowRemovedIdleTimeout   :: !Integer, 
                                        flowRemovedPacketCount   :: !Integer, 
                                        flowRemovedByteCount     :: !Integer }
-                 deriving (Show,Eq)
+                 deriving (Show,Eq,Generic,NFData)
 
 data FlowRemovalReason = IdleTimerExpired
                        | HardTimerExpired 
                        | DeletedByController
-                         deriving (Show,Eq,Ord,Enum)
+                         deriving (Show,Eq,Ord,Enum,Generic,NFData)
 

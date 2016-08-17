@@ -1,5 +1,7 @@
 {-# LANGUAGE CPP, DisambiguateRecordFields, RecordWildCards, NamedFieldPuns #-}
 {-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE DeriveGeneric, DeriveAnyClass #-}
+{-# OPTIONS_GHC -fno-warn-orphans #-}
 
 -- | This module implements parsing and unparsing functions for 
 -- OpenFlow messages. It exports a driver that can be used to read messages
@@ -12,6 +14,7 @@ module Network.Data.OpenFlow.MessagesBinary
        , putSCMessage
        ) where
 
+import Prelude hiding (mconcat)
 import Network.Data.Ethernet.EthernetAddress
 import Network.Data.Ethernet.EthernetFrame
 import Network.Data.IPv4.IPAddress
@@ -24,10 +27,7 @@ import Network.Data.OpenFlow.Packet
 import Network.Data.OpenFlow.FlowTable
 import Network.Data.OpenFlow.Statistics
 import Network.Data.OpenFlow.Error
-import Control.Applicative
-import Control.DeepSeq.Generics
 import Control.Monad (when)
-import Data.Monoid hiding ((<>), mconcat)
 import Data.Word
 import Data.Bits
 import Data.Binary
@@ -40,6 +40,8 @@ import qualified Data.Map as Map
 import Data.Bimap (Bimap, (!), (!>))
 import qualified Data.Bimap as Bimap
 import Data.Char (ord)
+import Control.DeepSeq (NFData)
+import GHC.Generics (Generic)
 
 
 
@@ -178,9 +180,7 @@ data OFPHeader =
             , msgType          :: !MessageTypeCode 
             , msgLength        :: !Word16 
             , msgTransactionID :: !M.TransactionID 
-            } deriving (Show,Eq)
-
-instance NFData OFPHeader
+            } deriving (Show,Eq,Generic,NFData)
 
 headerSize :: Int
 headerSize = 8 
@@ -1125,7 +1125,7 @@ data FlowModRecordInternal = FlowModRecordInternal {
       , bufferID'    :: !(Maybe BufferID)
       , outPort'     :: !(Maybe PseudoPort)
       , cookie'      :: !Cookie
-    } deriving (Eq,Show)
+    } deriving (Eq,Show,Generic,NFData)
 
 
 -- | Specification: @ofp_flow_mod_command@.
@@ -1135,10 +1135,10 @@ data FlowModType
     | FlowModifyStrictType
     | FlowDeleteType
     | FlowDeleteStrictType
-    deriving (Show,Eq,Ord)
+    deriving (Show,Eq,Ord,Generic,NFData)
 
 -- | A set of flow mod attributes can be added to a flow modification command.
-data FlowModFlag = SendFlowRemoved | CheckOverlap | Emergency deriving (Show,Eq,Ord,Enum)
+data FlowModFlag = SendFlowRemoved | CheckOverlap | Emergency deriving (Show,Eq,Ord,Enum,Generic,NFData)
 
 {-# INLINE putFlowModMain #-}
 putFlowModMain :: M.TransactionID -> FlowMod -> Put
@@ -1679,7 +1679,7 @@ data OFPMatch = OFPMatch { ofpm_wildcards           :: !Word32,
                            ofpm_nw_proto            :: !Word8,
                            ofpm_nw_src, ofpm_nw_dst :: !Word32,
                            ofpm_tp_src, ofpm_tp_dst :: !Word16 
-                         } deriving (Show,Eq)
+                         } deriving (Show,Eq,Generic,NFData)
 
 ofpMatch2Match :: OFPMatch -> Match
 ofpMatch2Match ofpm = Match

@@ -1,5 +1,6 @@
 {-# LANGUAGE TypeSynonymInstances, TypeOperators, MultiParamTypeClasses, FunctionalDependencies, RecordWildCards #-}
 {-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE DeriveGeneric, DeriveAnyClass #-}
 
 {-|
 
@@ -66,6 +67,8 @@ import Data.Binary.Put
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy as L
 import Control.Exception (assert)
+import Control.DeepSeq (NFData)
+import GHC.Generics (Generic)
 
 -- | An IP packet consists of a header and a body.
 type IPPacket = (IPHeader, IPBody)
@@ -83,7 +86,7 @@ data IPHeader = IPHeader { ipSrcAddress  :: !IPAddress
                          , ident :: !Word16
                          , flags :: !Word16
                          }
-                deriving (Read,Show,Eq)
+                deriving (Read,Show,Eq,Generic,NFData)
 
 type DifferentiatedServicesCodePoint = Word8
 type FragOffset      = Word16
@@ -115,7 +118,7 @@ data IPBody   = TCPInIP !TCPPortNumber !TCPPortNumber
               | UDPInIP !UDPPortNumber !UDPPortNumber 
               | ICMPInIP !ICMPHeader B.ByteString Word16
               | UninterpretedIPBody !IPProtocol
-              deriving (Show,Eq)
+              deriving (Show,Eq,Generic,NFData)
 
 
 getIPHeader :: Get (IPHeader, IPProtocol)

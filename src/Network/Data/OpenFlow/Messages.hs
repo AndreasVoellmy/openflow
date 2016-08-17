@@ -1,3 +1,5 @@
+{-# LANGUAGE DeriveGeneric #-}
+
 {-| 
 This module provides a logical representation of OpenFlow switches and protocol messages. 
 An OpenFlow message is either a switch-to-controller message or controller-to-switch message. 
@@ -11,6 +13,7 @@ module Network.Data.OpenFlow.Messages (
 
 import Control.DeepSeq.Generics
 import Data.Word
+import GHC.Generics
 import qualified Network.Data.OpenFlow.Port as Port
 import qualified Network.Data.OpenFlow.Packet as Packet
 import Network.Data.OpenFlow.Switch
@@ -35,7 +38,7 @@ data SCMessage    = SCHello TransactionID               -- ^ Sent after a switch
                   | Error         TransactionID !SwitchError -- ^ Switch reports an error
                   | BarrierReply TransactionID  -- ^ Switch responds that a barrier has been processed
                   | QueueConfigReply TransactionID !QueueConfigReply
-                  deriving (Show,Eq)
+                  deriving (Generic,Show,Eq)
 
 instance NFData SCMessage                       
 
