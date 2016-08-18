@@ -28,7 +28,7 @@ runServer portNum mkHandler =
   forkIO $
   bracket
   (mkHandler (Switch conn))
-  (\handler -> handler Nothing >> sClose conn)
+  (\handler -> handler Nothing >> close conn)
   (talk conn)
 
 runServerOne :: Binary a => Int -> Factory a -> IO ()
@@ -37,7 +37,7 @@ runServerOne portNum mkHandler =
   void $
   bracket
   (mkHandler (Switch conn))
-  (\handler -> handler Nothing >> sClose conn)
+  (\handler -> handler Nothing >> close conn)
   (talk conn)
 
 runServer_ :: Int -> ((Socket, SockAddr) -> IO ()) -> IO ()
@@ -49,10 +49,10 @@ runServer_ portNum f = withSocketsDo $
      let serveraddr = head addrinfos
      bracket
        (socket (addrFamily serveraddr) Stream defaultProtocol)
-       sClose
+       close
        (\sock -> do
            setSocketOption sock ReuseAddr 1
-           bindSocket sock $ addrAddress serveraddr
+           bind sock $ addrAddress serveraddr
            listen sock 1
            forever $ accept sock >>= f
        )

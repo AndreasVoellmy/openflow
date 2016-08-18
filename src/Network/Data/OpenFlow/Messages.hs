@@ -12,7 +12,6 @@ module Network.Data.OpenFlow.Messages (
   ) where
 
 import Control.DeepSeq (NFData)
-import Control.DeepSeq.Generics
 import Data.Word
 import GHC.Generics
 import qualified Network.Data.OpenFlow.Port as Port
@@ -22,13 +21,12 @@ import qualified Network.Data.OpenFlow.FlowTable as FlowTable
 import Network.Data.OpenFlow.Statistics
 import Network.Data.OpenFlow.Error
 
-
 -- | Every OpenFlow message is tagged with a MessageID value.
 type TransactionID = Word32
 
 -- | The Switch can send the following messages to 
 -- the controller.
-data SCMessage    = SCHello TransactionID               -- ^ Sent after a switch establishes a TCP connection to the controller
+data SCMessage    = SCHello TransactionID        -- ^ Sent after a switch establishes a TCP connection to the controller
                   | SCEchoRequest TransactionID ![Word8] -- ^ Switch requests an echo reply
                   | SCEchoReply   TransactionID ![Word8] -- ^ Switch responds to an echo request
                   | Features      TransactionID !SwitchFeatures -- ^ Switch reports its features
