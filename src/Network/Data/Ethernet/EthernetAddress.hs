@@ -32,6 +32,7 @@ import Network.Data.Util
 import GHC.Generics (Generic)
 import Data.Hashable
 import Data.Typeable
+import Control.DeepSeq
 import Control.DeepSeq.Generics
 
 -- | An Ethernet address consists of 6 bytes. It is stored in a single 64-bit value.

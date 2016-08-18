@@ -41,6 +41,7 @@ import qualified Data.Binary.Put as Strict
 import Network.Data.Util
 import GHC.Generics (Generic)
 import Data.Hashable
+import Control.DeepSeq
 import Control.DeepSeq.Generics
 
 import Data.Aeson.TH
