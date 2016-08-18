@@ -11,6 +11,7 @@ module Network.Data.OpenFlow.Messages (
   , CSMessage (..)
   ) where
 
+import Control.DeepSeq (NFData)
 import Control.DeepSeq.Generics
 import Data.Word
 import GHC.Generics
