@@ -1,11 +1,15 @@
+{-|
+Provides functions to establish connections, both passively and actively, with Openflow switches.
+-}
 module Network.Data.OF13.Server
-       ( Switch
+       ( Switch(..)
        , Factory
        , runServer
        , runServerOne
        , sendMessage
        , talk
        , talk2
+       , connectToSwitch
        ) where
 
 import Control.Concurrent
@@ -21,6 +25,8 @@ import Network.Socket.ByteString (recv, sendAll)
 type Factory a = Switch -> IO (Maybe a -> IO ())
 newtype Switch = Switch Socket
 
+-- |Listen (at the specified port) for any number of Openflow switches to connect to this given server. Uses the given
+-- factory to instantiate Openflow session handlers for these swithes.
 runServer :: Binary a => Int -> Factory a -> IO ()
 runServer portNum mkHandler =
   runServer_ portNum $ \(conn, _) ->
@@ -31,6 +37,8 @@ runServer portNum mkHandler =
   (\handler -> handler Nothing >> close conn)
   (talk conn)
 
+-- |Listen (at the specified port) for a single Openflow switch to connect to this given server (possibly repeatedly).
+-- Uses the given factory to instantiate Openflow session handlers for these swithes.
 runServerOne :: Binary a => Int -> Factory a -> IO ()
 runServerOne portNum mkHandler =
   runServer_ portNum $ \(conn, _) ->
@@ -44,7 +52,7 @@ runServer_ :: Int -> ((Socket, SockAddr) -> IO ()) -> IO ()
 runServer_ portNum f = withSocketsDo $
   do addrinfos <- getAddrInfo
                   (Just (defaultHints {addrFlags = [AI_PASSIVE]}))
-                  Nothing 
+                  Nothing
                   (Just $ show portNum)
      let serveraddr = head addrinfos
      bracket
@@ -57,12 +65,21 @@ runServer_ portNum f = withSocketsDo $
            forever $ accept sock >>= f
        )
 
+-- |Establishes an Openflow connection to the given server and port, using the specified handler on the connection.
+connectToSwitch :: Binary a => String -> String -> (Switch -> Maybe a -> IO ()) -> IO ()
+connectToSwitch hostNameOrIp port handler = do
+  addrinfos <- getAddrInfo Nothing (Just hostNameOrIp) (Just port)
+  let serveraddr = head addrinfos
+  sock <- socket (addrFamily serveraddr) Stream defaultProtocol
+  connect sock (addrAddress serveraddr)
+  talk sock $ handler $ Switch sock
+
 talk :: Binary a => Socket -> (Maybe a -> IO ()) -> IO ()
 talk = talk2 get
 
 talk2 :: Get a -> Socket -> (Maybe a -> IO ()) -> IO ()
 talk2 getter conn handler = go $ runGetIncremental getter
-  where 
+  where
     go (Fail _ _ err) = error err
     go (Partial f) = do
       msg <- recv conn bATCH_SIZE
@@ -75,7 +92,7 @@ talk2 getter conn handler = go $ runGetIncremental getter
 
 bATCH_SIZE :: Int
 bATCH_SIZE = 1024
-                
+
 sendMessage :: Binary a => Switch -> [a] -> IO ()
 sendMessage (Switch s) = mapM_ (sendMessage' s)
 
